@@ -19,9 +19,12 @@ const STATUS_COLORS = {
   past: 'var(--color-text-muted)',
 }
 
+const EVENT_FILTERS = ['Upcoming', 'Past', 'All']
+
 export default function Dashboard() {
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('Upcoming')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -62,16 +65,46 @@ export default function Dashboard() {
           </button>
         </div>
 
+        {/* Filter tabs */}
+        <div className="hide-scrollbar" style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: 24, overflowX: 'auto' }}>
+          {EVENT_FILTERS.map(f => (
+            <button key={f} onClick={() => setFilter(f)} style={{
+              padding: '10px 18px',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: filter === f ? '2px solid var(--color-accent)' : '2px solid transparent',
+              color: filter === f ? 'var(--color-text)' : 'var(--color-text-muted)',
+              fontFamily: 'var(--font-heading)',
+              fontSize: 12,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              cursor: 'pointer',
+              marginBottom: -1,
+              whiteSpace: 'nowrap',
+            }}>{f}</button>
+          ))}
+        </div>
+
         {loading ? (
           <p style={{ color: 'var(--color-text-muted)' }}>Loading...</p>
-        ) : events.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 80, color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
-            <p style={{ fontSize: 18, marginBottom: 8, fontFamily: 'var(--font-heading)', textTransform: 'uppercase' }}>No events yet</p>
-            <p style={{ fontSize: 14 }}>Create your first event to get started</p>
-          </div>
-        ) : (
+        ) : (() => {
+          const filtered = filter === 'Upcoming'
+            ? events.filter(e => deriveStatus(e) !== 'past')
+            : filter === 'Past'
+            ? events.filter(e => deriveStatus(e) === 'past')
+            : events
+          return filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 80, color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
+              <p style={{ fontSize: 18, marginBottom: 8, fontFamily: 'var(--font-heading)', textTransform: 'uppercase' }}>
+                {events.length === 0 ? 'No events yet' : `No ${filter.toLowerCase()} events`}
+              </p>
+              <p style={{ fontSize: 14 }}>
+                {events.length === 0 ? 'Create your first event to get started' : 'Switch to All to see all events'}
+              </p>
+            </div>
+          ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {events.map(event => {
+            {filtered.map(event => {
               const status = deriveStatus(event)
               const color = STATUS_COLORS[status]
               return (
@@ -129,7 +162,8 @@ export default function Dashboard() {
               )
             })}
           </div>
-        )}
+          )
+        })()}
       </div>
     </div>
   )

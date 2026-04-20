@@ -1,6 +1,30 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 
+export function buildDefaultStations(catId, weights) {
+  const w = weights || {}
+  const half = catId.startsWith('half_')
+  const r = half ? '500m' : '1000m'
+  return [
+    { order: 1,  label: 'Run',                value: r },
+    { order: 2,  label: 'SkiErg',             value: w.skiErg || r },
+    { order: 3,  label: 'Run',                value: r },
+    { order: 4,  label: 'Sled Push',          value: w.sledPush || '' },
+    { order: 5,  label: 'Run',                value: r },
+    { order: 6,  label: 'Sled Pull',          value: w.sledPull || '' },
+    { order: 7,  label: 'Run',                value: r },
+    { order: 8,  label: 'Burpee Broad Jump',  value: w.burpee || (half ? '40m' : '80m') },
+    { order: 9,  label: 'Run',                value: r },
+    { order: 10, label: 'Rowing',             value: w.rowing || r },
+    { order: 11, label: 'Run',                value: r },
+    { order: 12, label: 'Farmers Carry',      value: w.farmerCarry || '' },
+    { order: 13, label: 'Run',                value: r },
+    { order: 14, label: 'Sandbag Lunges',     value: [w.sandbag, w.lunge || (half ? '50m' : '100m')].filter(Boolean).join(' / ') },
+    { order: 15, label: 'Run',                value: r },
+    { order: 16, label: 'Wall Balls',         value: w.wallBall ? `${w.wallBall} / 100 reps` : '' },
+  ]
+}
+
 export const DEFAULT_CONFIG = {
   categories: [
     { id: 'single_men', label: 'Single Men', type: 'single', enabled: true },
@@ -116,8 +140,18 @@ export async function getOrCreateConfig() {
     }
   }
 
+  // Seed categoryStations for any category that doesn't have one yet
+  const existingStations = data.categoryStations || {}
+  const updatedStations = { ...existingStations }
+  for (const cat of DEFAULT_CONFIG.categories) {
+    if (!updatedStations[cat.id]) {
+      updatedStations[cat.id] = buildDefaultStations(cat.id, DEFAULT_CONFIG.weightCheatSheet[cat.id])
+      dirty = true
+    }
+  }
+
   if (!dirty) return data
-  const updated = { ...data, categories, weightCheatSheet: weights }
+  const updated = { ...data, categories, weightCheatSheet: weights, categoryStations: updatedStations }
   await setDoc(ref, updated)
   return updated
 }

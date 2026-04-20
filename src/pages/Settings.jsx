@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
+import { initializeApp, getApps, getApp } from 'firebase/app'
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
-import { db } from '../firebase'
+import { db, firebaseConfig } from '../firebase'
 import NavBar from '../components/NavBar'
-import WeightCheatSheet from '../components/WeightCheatSheet'
 import SaveConfirmation from '../components/SaveConfirmation'
-import { DEFAULT_CONFIG, getOrCreateConfig } from '../utils/firestoreUtils'
+import { DEFAULT_CONFIG, getOrCreateConfig, buildDefaultStations } from '../utils/firestoreUtils'
 
-const TABS = ['Categories', 'Station Templates', 'Checklist', 'Weights', 'Admin Users']
+const TABS = ['Categories', 'Stations', 'Checklist', 'Admin Users']
 
 export default function Settings() {
   const [tab, setTab] = useState(0)
@@ -58,10 +59,9 @@ export default function Settings() {
         </div>
 
         {tab === 0 && <CategoriesTab config={config} onSave={saveConfig} saved={saved} />}
-        {tab === 1 && <TemplatesTab config={config} onSave={saveConfig} saved={saved} />}
+        {tab === 1 && <StationsTab config={config} onSave={saveConfig} saved={saved} />}
         {tab === 2 && <ChecklistTab config={config} onSave={saveConfig} saved={saved} />}
-        {tab === 3 && <WeightsTab config={config} onSave={saveConfig} saved={saved} />}
-        {tab === 4 && <AdminUsersTab />}
+        {tab === 3 && <AdminUsersTab />}
       </div>
     </div>
   )
@@ -145,62 +145,86 @@ function CategoriesTab({ config, onSave, saved }) {
   )
 }
 
-function TemplatesTab({ config, onSave, saved }) {
-  const [templates, setTemplates] = useState(config?.stationTemplates || [])
+function StationsTab({ config, onSave, saved }) {
+  const enabledCats = (config?.categories || []).filter(c => c.enabled !== false)
+
+  function initStations() {
+    const result = {}
+    for (const cat of enabledCats) {
+      const existing = config?.categoryStations?.[cat.id]
+      result[cat.id] = existing ? [...existing] : buildDefaultStations(cat.id, config?.weightCheatSheet?.[cat.id])
+    }
+    return result
+  }
+
+  const [stations, setStations] = useState(initStations)
   const [expandedId, setExpandedId] = useState(null)
 
-  function updateStation(tplId, stIdx, field, value) {
-    setTemplates(ts => ts.map(t => t.id !== tplId ? t : {
-      ...t,
-      stations: t.stations.map((s, i) => i === stIdx ? { ...s, [field]: value } : s),
+  function updateStation(catId, idx, field, value) {
+    setStations(prev => ({
+      ...prev,
+      [catId]: prev[catId].map((s, i) => i === idx ? { ...s, [field]: value } : s),
     }))
   }
 
-  function addStation(tplId) {
-    setTemplates(ts => ts.map(t => t.id !== tplId ? t : {
-      ...t,
-      stations: [...t.stations, { order: t.stations.length + 1, type: 'station', label: '', reps_or_distance: '' }],
+  function addStation(catId) {
+    setStations(prev => ({
+      ...prev,
+      [catId]: [...(prev[catId] || []), { order: (prev[catId]?.length || 0) + 1, label: '', value: '' }],
     }))
   }
 
-  function removeStation(tplId, stIdx) {
-    setTemplates(ts => ts.map(t => t.id !== tplId ? t : {
-      ...t,
-      stations: t.stations.filter((_, i) => i !== stIdx),
+  function removeStation(catId, idx) {
+    setStations(prev => ({
+      ...prev,
+      [catId]: prev[catId].filter((_, i) => i !== idx),
     }))
   }
 
   return (
     <div>
-      {templates.map(tpl => (
-        <div key={tpl.id} style={{ marginBottom: 20, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          <div
-            style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-            onClick={() => setExpandedId(expandedId === tpl.id ? null : tpl.id)}
-          >
-            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 16 }}>{tpl.label}</span>
-            <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{tpl.stations?.length} stations — {expandedId === tpl.id ? '▲' : '▼'}</span>
-          </div>
-          {expandedId === tpl.id && (
-            <div style={{ borderTop: '1px solid var(--color-border)', padding: 16 }}>
-              {tpl.stations?.map((st, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-text-muted)', minWidth: 24, textAlign: 'right' }}>{st.order}</span>
-                  <select value={st.type} onChange={e => updateStation(tpl.id, i, 'type', e.target.value)} style={selectStyle}>
-                    <option value="run">Run</option>
-                    <option value="station">Station</option>
-                  </select>
-                  <input value={st.label} onChange={e => updateStation(tpl.id, i, 'label', e.target.value)} style={{ ...inputStyle, flex: 1 }} placeholder="Label" />
-                  <input value={st.reps_or_distance} onChange={e => updateStation(tpl.id, i, 'reps_or_distance', e.target.value)} style={{ ...inputStyle, width: 100 }} placeholder="Distance/reps" />
-                  <button onClick={() => removeStation(tpl.id, i)} style={iconBtnRed}>✕</button>
-                </div>
-              ))}
-              <button onClick={() => addStation(tpl.id)} style={btnSecondary}>+ Add Station</button>
+      <p style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 20 }}>
+        Configure stations per category. Pre-filled with standard HYROX defaults. Free-text values (e.g. 1000m / 102kg / 24kg each).
+      </p>
+      {enabledCats.map(cat => {
+        const catStations = stations[cat.id] || []
+        const isOpen = expandedId === cat.id
+        return (
+          <div key={cat.id} style={{ marginBottom: 10, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+            <div
+              style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+              onClick={() => setExpandedId(isOpen ? null : cat.id)}
+            >
+              <span style={{ fontFamily: 'var(--font-heading)', fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{cat.label}</span>
+              <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{catStations.length} stations — {isOpen ? '▲' : '▼'}</span>
             </div>
-          )}
-        </div>
-      ))}
-      <SaveBar onSave={() => onSave({ ...config, stationTemplates: templates })} saved={saved} />
+            {isOpen && (
+              <div style={{ borderTop: '1px solid var(--color-border)', padding: 16 }}>
+                {catStations.map((st, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-text-muted)', minWidth: 22, textAlign: 'right' }}>{st.order || i + 1}</span>
+                    <input
+                      value={st.label}
+                      onChange={e => updateStation(cat.id, i, 'label', e.target.value)}
+                      style={{ ...inputStyle, flex: 1 }}
+                      placeholder="Station name"
+                    />
+                    <input
+                      value={st.value}
+                      onChange={e => updateStation(cat.id, i, 'value', e.target.value)}
+                      style={{ ...inputStyle, width: 160 }}
+                      placeholder="e.g. 1000m / 102kg"
+                    />
+                    <button onClick={() => removeStation(cat.id, i)} style={iconBtnRed}>✕</button>
+                  </div>
+                ))}
+                <button onClick={() => addStation(cat.id)} style={btnSecondary}>+ Add Station</button>
+              </div>
+            )}
+          </div>
+        )
+      })}
+      <SaveBar onSave={() => onSave({ ...config, categoryStations: stations })} saved={saved} />
     </div>
   )
 }
@@ -249,41 +273,66 @@ function ChecklistTab({ config, onSave, saved }) {
   )
 }
 
-function WeightsTab({ config, onSave, saved }) {
-  const [overrides, setOverrides] = useState({})
-
-  return (
-    <div>
-      <p style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 20 }}>
-        These are the global default weights used for all events. Each event can further override these.
-      </p>
-      <WeightCheatSheet config={config} overrides={overrides} setOverrides={setOverrides} />
-      <div style={{ marginTop: 20 }}>
-        <SaveBar
-          onSave={() => {
-            const merged = { ...config, weightCheatSheet: { ...(config.weightCheatSheet || {}), ...overrides } }
-            onSave(merged)
-          }}
-          saved={saved}
-        />
-      </div>
-    </div>
-  )
-}
-
 function AdminUsersTab() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [message, setMessage] = useState(null)
+
+  async function createUser() {
+    if (!email || !password) return
+    setCreating(true)
+    setMessage(null)
+    try {
+      const secondaryApp = getApps().find(a => a.name === 'secondary')
+        ? getApp('secondary')
+        : initializeApp(firebaseConfig, 'secondary')
+      const secondaryAuth = getAuth(secondaryApp)
+      await createUserWithEmailAndPassword(secondaryAuth, email, password)
+      await secondaryAuth.signOut()
+      setMessage({ type: 'success', text: `User ${email} created successfully.` })
+      setEmail('')
+      setPassword('')
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message })
+    } finally {
+      setCreating(false)
+    }
+  }
+
   return (
-    <div style={{ maxWidth: 600 }}>
+    <div style={{ maxWidth: 480 }}>
+      <p style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 20 }}>
+        Create a new admin user. They can log in immediately with the provided credentials.
+      </p>
       <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '20px 24px' }}>
-        <h3 style={{ fontSize: 16, marginBottom: 12 }}>Admin Users</h3>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>
-          Admin accounts are managed directly in Firebase Console. To add or remove admins:
-        </p>
-        <ol style={{ color: 'var(--color-text-muted)', fontSize: 14, lineHeight: 2, paddingLeft: 20 }}>
-          <li>Go to <strong style={{ color: 'var(--color-text)' }}>console.firebase.google.com</strong></li>
-          <li>Select your project → Authentication → Users</li>
-          <li>Add or delete individual coach accounts</li>
-        </ol>
+        <h3 style={{ fontSize: 15, marginBottom: 16, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Create User</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="Email address"
+            style={{ ...inputStyle, fontSize: 14, width: '100%' }}
+            onKeyDown={e => e.key === 'Enter' && createUser()}
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder="Password (min. 6 characters)"
+            style={{ ...inputStyle, fontSize: 14, width: '100%' }}
+            onKeyDown={e => e.key === 'Enter' && createUser()}
+          />
+        </div>
+        {message && (
+          <p style={{ fontSize: 13, marginBottom: 14, color: message.type === 'success' ? 'var(--color-success)' : 'var(--color-accent)' }}>
+            {message.text}
+          </p>
+        )}
+        <button onClick={createUser} disabled={creating || !email || !password} style={{ ...btnPrimary, opacity: (creating || !email || !password) ? 0.5 : 1 }}>
+          {creating ? 'Creating...' : 'Create User'}
+        </button>
       </div>
     </div>
   )
