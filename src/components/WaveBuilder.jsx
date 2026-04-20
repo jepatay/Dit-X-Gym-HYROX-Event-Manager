@@ -34,8 +34,8 @@ export default function WaveBuilder({ waves, setWaves, config, onSave, saved }) 
   const [aTeamCount, setATeamCount] = useState(10)
 
   const [rStart, setRStart] = useState(getDefaultStart(waves))
-  const [rDuration, setRDuration] = useState(15)
-  const [rLabel, setRLabel] = useState('Rest')
+  const [rDuration, setRDuration] = useState(10)
+  const [rLabel, setRLabel] = useState('Pause')
 
   const [editingId, setEditingId] = useState(null)
 
@@ -65,7 +65,7 @@ export default function WaveBuilder({ waves, setWaves, config, onSave, saved }) 
   function addRestWave() {
     const wave = {
       id: newId(),
-      label: rLabel || 'Rest',
+      label: rLabel || 'Pause',
       startTime: rStart,
       durationMinutes: Number(rDuration),
       isRestWave: true,
@@ -198,7 +198,7 @@ export default function WaveBuilder({ waves, setWaves, config, onSave, saved }) 
                     <span style={{ fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700 }}>{wave.label}</span>
                     {wave.isRestWave ? (
                       <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase' }}>
-                        {wave.durationMinutes}min rest
+                        {wave.durationMinutes}min pause
                       </span>
                     ) : (
                       <>
@@ -224,16 +224,21 @@ export default function WaveBuilder({ waves, setWaves, config, onSave, saved }) 
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
         <button
-          onClick={() => { setShowActiveForm(true); setShowRestForm(false); setAStart(getDefaultStart(waves)) }}
+          onClick={() => {
+            setShowActiveForm(true)
+            setShowRestForm(false)
+            setAStart(getDefaultStart(waves))
+            setALabel(`Wave ${waves.filter(w => !w.isRestWave).length + 1}`)
+          }}
           style={btnSecondary}
         >
           + Add Wave
         </button>
         <button
-          onClick={() => { setShowRestForm(true); setShowActiveForm(false); setRStart(getDefaultStart(waves)) }}
+          onClick={() => { setShowRestForm(true); setShowActiveForm(false); setRStart(getDefaultStart(waves)); setRLabel('Pause'); setRDuration(10) }}
           style={btnSecondary}
         >
-          + Add Rest
+          + Add Pause
         </button>
       </div>
 
@@ -273,11 +278,11 @@ export default function WaveBuilder({ waves, setWaves, config, onSave, saved }) 
 
       {showRestForm && (
         <div style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', padding: 20, marginBottom: 20 }}>
-          <h4 style={{ fontSize: 14, marginBottom: 14 }}>New Rest Block</h4>
+          <h4 style={{ fontSize: 14, marginBottom: 14 }}>New Pause</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 14 }}>
             <div>
               <FieldLabel>Label</FieldLabel>
-              <input value={rLabel} onChange={e => setRLabel(e.target.value)} placeholder="Rest" style={inputStyle} />
+              <input value={rLabel} onChange={e => setRLabel(e.target.value)} placeholder="Pause" style={inputStyle} />
             </div>
             <div>
               <FieldLabel>Start Time</FieldLabel>
@@ -289,7 +294,7 @@ export default function WaveBuilder({ waves, setWaves, config, onSave, saved }) 
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={addRestWave} style={btnPrimary}>Add Rest</button>
+            <button onClick={addRestWave} style={btnPrimary}>Add Pause</button>
             <button onClick={() => setShowRestForm(false)} style={btnSecondary}>Cancel</button>
           </div>
         </div>

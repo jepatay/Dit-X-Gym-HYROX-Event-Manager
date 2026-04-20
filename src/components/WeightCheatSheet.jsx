@@ -4,9 +4,9 @@ const WEIGHT_FIELDS = [
   { key: 'sandbag', label: 'Sandbag' },
   { key: 'wallBall', label: 'Wall Ball' },
   { key: 'farmerCarry', label: 'Farmer Carry' },
+  { key: 'run', label: 'Run' },
+  { key: 'burpee', label: 'Burpee Broad Jump' },
 ]
-
-const WEIGHTED_CATS = ['single_men_open', 'single_men_pro', 'single_women_open', 'single_women_pro']
 
 export default function WeightCheatSheet({ config, overrides, setOverrides, readOnly }) {
   const globalWeights = config?.weightCheatSheet || {}
@@ -18,7 +18,7 @@ export default function WeightCheatSheet({ config, overrides, setOverrides, read
     }))
   }
 
-  const categories = (config?.categories || []).filter(c => WEIGHTED_CATS.includes(c.id))
+  const categories = (config?.categories || []).filter(c => c.enabled !== false)
 
   return (
     <div style={{ overflowX: 'auto' }}>

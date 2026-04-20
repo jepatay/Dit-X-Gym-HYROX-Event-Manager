@@ -4,20 +4,31 @@ import { db } from '../firebase'
 export const DEFAULT_CONFIG = {
   categories: [
     { id: 'single_men', label: 'Single Men', type: 'single', enabled: true },
-    { id: 'single_men_open', label: 'Single Men Open', type: 'single', enabled: true },
     { id: 'single_men_pro', label: 'Single Men Pro', type: 'single', enabled: true },
     { id: 'single_women', label: 'Single Women', type: 'single', enabled: true },
-    { id: 'single_women_open', label: 'Single Women Open', type: 'single', enabled: true },
     { id: 'single_women_pro', label: 'Single Women Pro', type: 'single', enabled: true },
     { id: 'double_men', label: 'Double Men', type: 'double', enabled: true },
     { id: 'double_women', label: 'Double Women', type: 'double', enabled: true },
     { id: 'double_mixed', label: 'Double Mixed', type: 'double', enabled: true },
+    { id: 'half_single_men', label: 'Half Single Men', type: 'single', enabled: true },
+    { id: 'half_single_women', label: 'Half Single Women', type: 'single', enabled: true },
+    { id: 'half_single_double_men', label: 'Half Single Double Men', type: 'double', enabled: true },
+    { id: 'half_single_double_mixed', label: 'Half Single Double Mixed', type: 'double', enabled: true },
+    { id: 'half_single_double_women', label: 'Half Single Double Women', type: 'double', enabled: true },
   ],
   weightCheatSheet: {
-    single_men_open:   { sledPush: '102kg', sledPull: '78kg', sandbag: '20kg', wallBall: '6kg', farmerCarry: '24kg each' },
-    single_men_pro:    { sledPush: '152kg', sledPull: '103kg', sandbag: '30kg', wallBall: '9kg', farmerCarry: '32kg each' },
-    single_women_open: { sledPush: '72kg', sledPull: '53kg', sandbag: '10kg', wallBall: '4kg', farmerCarry: '16kg each' },
-    single_women_pro:  { sledPush: '102kg', sledPull: '78kg', sandbag: '20kg', wallBall: '6kg', farmerCarry: '24kg each' },
+    single_men:               { sledPush: '102kg', sledPull: '78kg', sandbag: '20kg', wallBall: '6kg', farmerCarry: '24kg each', run: '1000m', burpee: '80m' },
+    single_men_pro:           { sledPush: '152kg', sledPull: '103kg', sandbag: '30kg', wallBall: '9kg', farmerCarry: '32kg each', run: '1000m', burpee: '80m' },
+    single_women:             { sledPush: '72kg', sledPull: '53kg', sandbag: '10kg', wallBall: '4kg', farmerCarry: '16kg each', run: '1000m', burpee: '80m' },
+    single_women_pro:         { sledPush: '102kg', sledPull: '78kg', sandbag: '20kg', wallBall: '6kg', farmerCarry: '24kg each', run: '1000m', burpee: '80m' },
+    double_men:               { sledPush: '102kg', sledPull: '78kg', sandbag: '20kg', wallBall: '6kg', farmerCarry: '24kg each', run: '1000m', burpee: '80m' },
+    double_women:             { sledPush: '72kg', sledPull: '53kg', sandbag: '10kg', wallBall: '4kg', farmerCarry: '16kg each', run: '1000m', burpee: '80m' },
+    double_mixed:             { sledPush: '102kg / 72kg', sledPull: '78kg / 53kg', sandbag: '20kg / 10kg', wallBall: '6kg / 4kg', farmerCarry: '24kg / 16kg each', run: '1000m', burpee: '80m' },
+    half_single_men:          { sledPush: '102kg', sledPull: '78kg', sandbag: '20kg', wallBall: '6kg', farmerCarry: '24kg each', run: '500m', burpee: '40m' },
+    half_single_women:        { sledPush: '72kg', sledPull: '53kg', sandbag: '10kg', wallBall: '4kg', farmerCarry: '16kg each', run: '500m', burpee: '40m' },
+    half_single_double_men:   { sledPush: '102kg', sledPull: '78kg', sandbag: '20kg', wallBall: '6kg', farmerCarry: '24kg each', run: '500m', burpee: '40m' },
+    half_single_double_mixed: { sledPush: '102kg / 72kg', sledPull: '78kg / 53kg', sandbag: '20kg / 10kg', wallBall: '6kg / 4kg', farmerCarry: '24kg / 16kg each', run: '500m', burpee: '40m' },
+    half_single_double_women: { sledPush: '72kg', sledPull: '53kg', sandbag: '10kg', wallBall: '4kg', farmerCarry: '16kg each', run: '500m', burpee: '40m' },
   },
   stationTemplates: [
     {
@@ -70,5 +81,11 @@ export async function getOrCreateConfig() {
     await setDoc(ref, DEFAULT_CONFIG)
     return DEFAULT_CONFIG
   }
-  return snap.data()
+  const data = snap.data()
+  const existingIds = new Set((data.categories || []).map(c => c.id))
+  const missingCats = DEFAULT_CONFIG.categories.filter(c => !existingIds.has(c.id))
+  if (missingCats.length === 0) return data
+  const updated = { ...data, categories: [...(data.categories || []), ...missingCats] }
+  await setDoc(ref, updated)
+  return updated
 }
