@@ -82,10 +82,42 @@ export async function getOrCreateConfig() {
     return DEFAULT_CONFIG
   }
   const data = snap.data()
-  const existingIds = new Set((data.categories || []).map(c => c.id))
-  const missingCats = DEFAULT_CONFIG.categories.filter(c => !existingIds.has(c.id))
-  if (missingCats.length === 0) return data
-  const updated = { ...data, categories: [...(data.categories || []), ...missingCats] }
+  let dirty = false
+
+  // Sync categories: add missing defaults, disable stale ones not in defaults
+  const defaultIdSet = new Set(DEFAULT_CONFIG.categories.map(c => c.id))
+  const existingIdSet = new Set((data.categories || []).map(c => c.id))
+  const missingCats = DEFAULT_CONFIG.categories.filter(c => !existingIdSet.has(c.id))
+  let categories = (data.categories || []).map(c => {
+    if (!defaultIdSet.has(c.id) && c.enabled !== false) {
+      dirty = true
+      return { ...c, enabled: false }
+    }
+    return c
+  })
+  if (missingCats.length > 0) {
+    categories = [...categories, ...missingCats]
+    dirty = true
+  }
+
+  // Sync weightCheatSheet: add missing entries and missing fields for existing entries
+  const weights = { ...(data.weightCheatSheet || {}) }
+  for (const [catId, defaults] of Object.entries(DEFAULT_CONFIG.weightCheatSheet)) {
+    if (!weights[catId]) {
+      weights[catId] = defaults
+      dirty = true
+    } else {
+      for (const [field, val] of Object.entries(defaults)) {
+        if (weights[catId][field] === undefined) {
+          weights[catId][field] = val
+          dirty = true
+        }
+      }
+    }
+  }
+
+  if (!dirty) return data
+  const updated = { ...data, categories, weightCheatSheet: weights }
   await setDoc(ref, updated)
   return updated
 }
