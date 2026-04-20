@@ -40,9 +40,6 @@ export default function NavBar() {
         <Link to="/settings" style={navLinkStyle}>Settings</Link>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        {user && (
-          <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{user.email}</span>
-        )}
         <button onClick={handleSignOut} style={{
           background: 'transparent',
           border: '1px solid var(--color-border)',

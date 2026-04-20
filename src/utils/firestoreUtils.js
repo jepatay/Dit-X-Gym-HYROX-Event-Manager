@@ -7,7 +7,7 @@ export function buildDefaultStations(catId, weights) {
   const r = half ? '500m' : '1000m'
   return [
     { order: 1,  label: 'Run',                value: r },
-    { order: 2,  label: 'SkiErg',             value: w.skiErg || r },
+    { order: 2,  label: 'Ski Erg',            value: w.skiErg || r },
     { order: 3,  label: 'Run',                value: r },
     { order: 4,  label: 'Sled Push',          value: w.sledPush || '' },
     { order: 5,  label: 'Run',                value: r },
@@ -15,17 +15,18 @@ export function buildDefaultStations(catId, weights) {
     { order: 7,  label: 'Run',                value: r },
     { order: 8,  label: 'Burpee Broad Jump',  value: w.burpee || (half ? '40m' : '80m') },
     { order: 9,  label: 'Run',                value: r },
-    { order: 10, label: 'Rowing',             value: w.rowing || r },
+    { order: 10, label: 'Row Erg',            value: w.rowing || r },
     { order: 11, label: 'Run',                value: r },
     { order: 12, label: 'Farmers Carry',      value: w.farmerCarry || '' },
     { order: 13, label: 'Run',                value: r },
-    { order: 14, label: 'Sandbag Lunges',     value: [w.sandbag, w.lunge || (half ? '50m' : '100m')].filter(Boolean).join(' / ') },
+    { order: 14, label: 'Walking Lunges',     value: [w.sandbag, w.lunge || (half ? '50m' : '100m')].filter(Boolean).join(' / ') },
     { order: 15, label: 'Run',                value: r },
-    { order: 16, label: 'Wall Balls',         value: w.wallBall ? `${w.wallBall} / 100 reps` : '' },
+    { order: 16, label: 'Wall Ball',          value: w.wallBall ? `${w.wallBall} / 100 reps` : '' },
   ]
 }
 
 export const DEFAULT_CONFIG = {
+  staff: [],
   categories: [
     { id: 'single_men', label: 'Single Men', type: 'single', enabled: true },
     { id: 'single_men_pro', label: 'Single Men Pro', type: 'single', enabled: true },

@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
-import { db, firebaseConfig } from '../firebase'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { db, firebaseConfig, storage } from '../firebase'
 import NavBar from '../components/NavBar'
 import SaveConfirmation from '../components/SaveConfirmation'
 import { DEFAULT_CONFIG, getOrCreateConfig, buildDefaultStations } from '../utils/firestoreUtils'
 
-const TABS = ['Categories', 'Stations', 'Checklist', 'Admin Users']
+const TABS = ['Categories', 'Stations', 'Checklist', 'Staff', 'Admin Users']
 
 export default function Settings() {
   const [tab, setTab] = useState(0)
@@ -61,7 +62,8 @@ export default function Settings() {
         {tab === 0 && <CategoriesTab config={config} onSave={saveConfig} saved={saved} />}
         {tab === 1 && <StationsTab config={config} onSave={saveConfig} saved={saved} />}
         {tab === 2 && <ChecklistTab config={config} onSave={saveConfig} saved={saved} />}
-        {tab === 3 && <AdminUsersTab />}
+        {tab === 3 && <StaffTab config={config} onSave={saveConfig} saved={saved} />}
+        {tab === 4 && <AdminUsersTab />}
       </div>
     </div>
   )
@@ -102,13 +104,12 @@ function CategoriesTab({ config, onSave, saved }) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
         {cats.map(cat => (
-          <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+          <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
             <input
               value={cat.label}
               onChange={e => updateLabel(cat.id, e.target.value)}
-              style={{ flex: 1, background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', padding: '6px 10px', fontSize: 14 }}
+              style={{ width: 180, minWidth: 0, background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', padding: '6px 10px', fontSize: 13 }}
             />
-            <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', minWidth: 50 }}>{cat.type}</span>
             <button
               onClick={() => toggle(cat.id)}
               style={{
@@ -269,6 +270,79 @@ function ChecklistTab({ config, onSave, saved }) {
         <button onClick={addItem} style={btnSecondary}>+ Add</button>
       </div>
       <SaveBar onSave={() => onSave({ ...config, checklistItems: items })} saved={saved} />
+    </div>
+  )
+}
+
+function StaffTab({ config, onSave, saved }) {
+  const [staff, setStaff] = useState(config?.staff || [])
+
+  function addMember() {
+    setStaff(s => [...s, { id: `staff_${Date.now()}`, name: '', role: '', station: '', photoUrl: '' }])
+  }
+
+  function updateMember(id, val) {
+    setStaff(s => s.map(m => m.id === id ? { ...m, ...val } : m))
+  }
+
+  function deleteMember(id) {
+    if (!confirm('Remove this staff member?')) return
+    setStaff(s => s.filter(m => m.id !== id))
+  }
+
+  return (
+    <div>
+      <p style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 20 }}>
+        Manage your staff database here. Then select active staff per event.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+        {staff.map(member => (
+          <StaffCard key={member.id} member={member} onUpdate={val => updateMember(member.id, val)} onDelete={() => deleteMember(member.id)} />
+        ))}
+      </div>
+      <button onClick={addMember} style={btnSecondary}>+ Add Staff Member</button>
+      <SaveBar onSave={() => onSave({ ...config, staff })} saved={saved} />
+    </div>
+  )
+}
+
+function StaffCard({ member, onUpdate, onDelete }) {
+  const fileRef = useRef()
+  const [uploading, setUploading] = useState(false)
+
+  async function handlePhoto(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const storageRef = ref(storage, `staff/${member.id}-${Date.now()}-${file.name}`)
+      await uploadBytes(storageRef, file)
+      const url = await getDownloadURL(storageRef)
+      onUpdate({ photoUrl: url })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: 14, display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+      <div style={{ flexShrink: 0 }}>
+        {member.photoUrl ? (
+          <img src={member.photoUrl} alt={member.name} style={{ width: 56, height: 56, objectFit: 'cover' }} />
+        ) : (
+          <div style={{ width: 56, height: 56, background: 'var(--color-bg)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: 20 }}>?</div>
+        )}
+        <button type="button" onClick={() => fileRef.current.click()} disabled={uploading} style={{ marginTop: 4, width: '100%', background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', fontSize: 10, padding: '3px 6px', cursor: 'pointer', fontFamily: 'var(--font-heading)', textTransform: 'uppercase' }}>
+          {uploading ? '...' : 'Photo'}
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" onChange={handlePhoto} style={{ display: 'none' }} />
+      </div>
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <input value={member.name || ''} onChange={e => onUpdate({ name: e.target.value })} placeholder="Name" style={inputStyle} />
+        <input value={member.role || ''} onChange={e => onUpdate({ role: e.target.value })} placeholder="Role" style={inputStyle} />
+        <input value={member.station || ''} onChange={e => onUpdate({ station: e.target.value })} placeholder="Station" style={{ ...inputStyle, gridColumn: '1 / -1' }} />
+      </div>
+      <button type="button" onClick={onDelete} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', fontSize: 16, cursor: 'pointer', padding: 4 }}>✕</button>
     </div>
   )
 }

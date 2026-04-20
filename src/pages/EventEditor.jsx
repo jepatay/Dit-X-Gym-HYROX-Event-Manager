@@ -11,7 +11,6 @@ import CalendarPicker from '../components/CalendarPicker'
 import WaveBuilder from '../components/WaveBuilder'
 import ChecklistPanel from '../components/ChecklistPanel'
 import TeamForm from '../components/TeamForm'
-import HelperCard from '../components/HelperCard'
 import WeightCheatSheet from '../components/WeightCheatSheet'
 import SaveConfirmation from '../components/SaveConfirmation'
 import { generateSlug } from '../utils/slugUtils'
@@ -37,7 +36,7 @@ export default function EventEditor() {
   const [waves, setWaves] = useState([])
   const [checklist, setChecklist] = useState({})
   const [maps, setMaps] = useState({})
-  const [helpers, setHelpers] = useState([])
+  const [selectedStaffIds, setSelectedStaffIds] = useState([])
   const [weightOverrides, setWeightOverrides] = useState({})
   const [publicSlug, setPublicSlug] = useState('')
 
@@ -58,7 +57,7 @@ export default function EventEditor() {
     setWaves(d.waves || [])
     setChecklist(d.checklist || {})
     setMaps(d.maps || {})
-    setHelpers(d.helpers || [])
+    setSelectedStaffIds(d.selectedStaffIds || [])
     setWeightOverrides(d.weightOverrides || {})
     setPublicSlug(d.publicSlug || '')
   }
@@ -66,7 +65,7 @@ export default function EventEditor() {
   function buildData(slug) {
     const today = new Date().toISOString().substring(0, 10)
     const status = date < today ? 'past' : date === today ? 'live' : 'future'
-    return { name, date, eventType, status, links, waves, checklist, maps, helpers, weightOverrides, publicSlug: slug }
+    return { name, date, eventType, status, links, waves, checklist, maps, selectedStaffIds, weightOverrides, publicSlug: slug }
   }
 
   async function saveEvent() {
@@ -165,7 +164,7 @@ export default function EventEditor() {
         {tab === 4 && (
           <EventSetupTab
             maps={maps} setMaps={setMaps}
-            helpers={helpers} setHelpers={setHelpers}
+            selectedStaffIds={selectedStaffIds} setSelectedStaffIds={setSelectedStaffIds}
             weightOverrides={weightOverrides} setWeightOverrides={setWeightOverrides}
             config={config}
             onSave={saveEvent} saved={saved}
@@ -370,7 +369,7 @@ function TeamsTab({ eventId, waves, config }) {
   )
 }
 
-function EventSetupTab({ maps, setMaps, helpers, setHelpers, weightOverrides, setWeightOverrides, config, onSave, saved, eventId }) {
+function EventSetupTab({ maps, setMaps, selectedStaffIds, setSelectedStaffIds, weightOverrides, setWeightOverrides, config, onSave, saved, eventId }) {
   const gymRef = useRef()
   const runRef = useRef()
   const [uploading, setUploading] = useState({})
@@ -388,16 +387,8 @@ function EventSetupTab({ maps, setMaps, helpers, setHelpers, weightOverrides, se
     }
   }
 
-  function addHelper() {
-    setHelpers(hs => [...hs, { name: '', role: '', station: '', photoUrl: '' }])
-  }
-
-  function updateHelper(i, val) {
-    setHelpers(hs => hs.map((h, j) => j === i ? val : h))
-  }
-
-  function deleteHelper(i) {
-    setHelpers(hs => hs.filter((_, j) => j !== i))
+  function toggleStaff(id) {
+    setSelectedStaffIds(ids => ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id])
   }
 
   return (
@@ -423,13 +414,50 @@ function EventSetupTab({ maps, setMaps, helpers, setHelpers, weightOverrides, se
         <input ref={runRef} type="file" accept="image/*" onChange={e => uploadMap('runRoute', e.target.files[0])} style={{ display: 'none' }} />
       </Section>
 
-      <Section title={`Helpers (${helpers.length})`}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
-          {helpers.map((h, i) => (
-            <HelperCard key={i} helper={h} index={i} onUpdate={updateHelper} onDelete={deleteHelper} />
-          ))}
-        </div>
-        <button type="button" onClick={addHelper} style={btnSecondary}>+ Add Helper</button>
+      <Section title={`Staff (${selectedStaffIds.length} selected)`}>
+        {(config?.staff || []).length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
+            No staff in database. Add staff members in <a href="/settings" style={{ color: 'var(--color-accent)' }}>Settings → Staff</a>.
+          </p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {(config?.staff || []).map(member => {
+              const active = selectedStaffIds.includes(member.id)
+              return (
+                <div
+                  key={member.id}
+                  onClick={() => toggleStaff(member.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+                    background: active ? 'rgba(229,57,53,0.08)' : 'var(--color-surface-raised)',
+                    border: `1px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                    cursor: 'pointer', userSelect: 'none',
+                  }}
+                >
+                  {member.photoUrl && (
+                    <img src={member.photoUrl} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{member.name}</div>
+                    {(member.role || member.station) && (
+                      <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                        {[member.role, member.station].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
+                  </div>
+                  <span style={{
+                    width: 20, height: 20, border: `2px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                    background: active ? 'var(--color-accent)' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#fff', fontSize: 12, flexShrink: 0,
+                  }}>
+                    {active ? '✓' : ''}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </Section>
 
       <Section title="Weight Cheat Sheet">

@@ -75,6 +75,42 @@ export default function Results() {
     return result
   }
 
+  const [sortCol, setSortCol] = useState('bib')
+  const [sortDir, setSortDir] = useState('asc')
+
+  function handleSort(col) {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortCol(col); setSortDir('asc') }
+  }
+
+  function sortTeams(list) {
+    return [...list].sort((a, b) => {
+      let v = 0
+      if (sortCol === 'bib') v = (a.bibNumber || 0) - (b.bibNumber || 0)
+      else if (sortCol === 'rank') {
+        if (a.rank && b.rank) v = a.rank - b.rank
+        else if (a.rank) v = -1
+        else if (b.rank) v = 1
+        else v = (a.bibNumber || 0) - (b.bibNumber || 0)
+      } else if (sortCol === 'name') v = (a.name || '').localeCompare(b.name || '')
+      else if (sortCol === 'time') {
+        if (a.finishTimeSeconds != null && b.finishTimeSeconds != null) v = a.finishTimeSeconds - b.finishTimeSeconds
+        else if (a.finishTimeSeconds != null) v = -1
+        else if (b.finishTimeSeconds != null) v = 1
+      }
+      return sortDir === 'asc' ? v : -v
+    })
+  }
+
+  function SortHeader({ col, children, style }) {
+    const active = sortCol === col
+    return (
+      <th onClick={() => handleSort(col)} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', ...style }}>
+        {children} <span style={{ opacity: active ? 1 : 0.3, fontSize: 10 }}>{active ? (sortDir === 'asc' ? '▲' : '▼') : '▲'}</span>
+      </th>
+    )
+  }
+
   const waves = (event?.waves || []).filter(w => !w.isRestWave).sort((a, b) => a.startTime?.localeCompare(b.startTime))
   const hasAnyResult = teams.some(t => t.finishTimeSeconds != null)
 
@@ -94,7 +130,7 @@ export default function Results() {
         </div>
 
         {waves.map(wave => {
-          const waveTeams = teams.filter(t => t.waveId === wave.id).sort((a, b) => a.bibNumber - b.bibNumber)
+          const waveTeams = teams.filter(t => t.waveId === wave.id)
           if (waveTeams.length === 0) return null
           return (
             <div key={wave.id} style={{ marginBottom: 36 }}>
@@ -102,21 +138,16 @@ export default function Results() {
               <table>
                 <thead>
                   <tr>
-                    {hasAnyResult && <th style={{ width: 50 }}>Rank</th>}
-                    <th>Bib</th>
-                    <th>Name</th>
+                    {hasAnyResult && <SortHeader col="rank" style={{ width: 50 }}>Rank</SortHeader>}
+                    <SortHeader col="bib">Bib</SortHeader>
+                    <SortHeader col="name">Name</SortHeader>
                     <th>Athlete(s)</th>
-                    <th>Finish Time (HH:MM:SS)</th>
+                    <SortHeader col="time">Finish Time (HH:MM:SS)</SortHeader>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {waveTeams.sort((a, b) => {
-                    if (a.rank && b.rank) return a.rank - b.rank
-                    if (a.rank) return -1
-                    if (b.rank) return 1
-                    return a.bibNumber - b.bibNumber
-                  }).map(team => (
+                  {sortTeams(waveTeams).map(team => (
                     <tr key={team.id}>
                       {hasAnyResult && (
                         <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: team.rank === 1 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>
