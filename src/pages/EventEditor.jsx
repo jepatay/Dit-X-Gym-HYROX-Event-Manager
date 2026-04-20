@@ -330,7 +330,7 @@ function TeamsTab({ eventId, waves, config }) {
                           {team.athlete1?.firstName} {team.athlete1?.lastName}
                           {team.athlete2?.firstName && ` / ${team.athlete2.firstName} ${team.athlete2.lastName}`}
                         </div>
-                        {isDouble && !team.athlete2Confirmed && (
+                        {isDouble && !team.athlete2Confirmed && !team.athlete2?.firstName && (
                           <span style={{ fontSize: 10, background: 'rgba(245,158,11,0.15)', color: 'var(--color-warning)', padding: '1px 5px', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'inline-block', marginTop: 3 }}>Partner pending</span>
                         )}
                         {team.checkedIn && (

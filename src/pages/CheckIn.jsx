@@ -30,7 +30,7 @@ export default function CheckIn() {
 
   async function checkIn(team) {
     const isDouble = team.athlete2 !== undefined
-    if (isDouble && !team.athlete2Confirmed) {
+    if (isDouble && !team.athlete2Confirmed && !team.athlete2?.firstName) {
       setPartnerModal(team)
       setPartnerForm({ firstName: '', lastName: '', email: '' })
       return
