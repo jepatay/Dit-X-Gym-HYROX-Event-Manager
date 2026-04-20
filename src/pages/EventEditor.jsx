@@ -33,7 +33,6 @@ export default function EventEditor() {
   const [name, setName] = useState('')
   const [date, setDate] = useState('')
   const [eventType, setEventType] = useState('Full HYROX')
-  const [status, setStatus] = useState('future')
   const [links, setLinks] = useState([])
   const [waves, setWaves] = useState([])
   const [checklist, setChecklist] = useState({})
@@ -54,7 +53,7 @@ export default function EventEditor() {
     setName(d.name || '')
     setDate(d.date || '')
     setEventType(d.eventType || 'Full HYROX')
-    setStatus(d.status || 'future')
+
     setLinks(d.links || [])
     setWaves(d.waves || [])
     setChecklist(d.checklist || {})
@@ -65,6 +64,8 @@ export default function EventEditor() {
   }
 
   function buildData(slug) {
+    const today = new Date().toISOString().substring(0, 10)
+    const status = date < today ? 'past' : date === today ? 'live' : 'future'
     return { name, date, eventType, status, links, waves, checklist, maps, helpers, weightOverrides, publicSlug: slug }
   }
 
@@ -139,7 +140,7 @@ export default function EventEditor() {
             name={name} setName={setName}
             date={date} setDate={setDate}
             eventType={eventType} setEventType={setEventType}
-            status={status} setStatus={setStatus}
+
             links={links} setLinks={setLinks}
             onSave={saveEvent} saved={saved}
           />
@@ -176,7 +177,7 @@ export default function EventEditor() {
   )
 }
 
-function InfoTab({ name, setName, date, setDate, eventType, setEventType, status, setStatus, links, setLinks, onSave, saved }) {
+function InfoTab({ name, setName, date, setDate, eventType, setEventType, links, setLinks, onSave, saved }) {
   return (
     <div style={{ maxWidth: 620 }}>
       <Field label="Event Name">
@@ -209,28 +210,6 @@ function InfoTab({ name, setName, date, setDate, eventType, setEventType, status
                 cursor: 'pointer',
               }}
             >{t}</button>
-          ))}
-        </div>
-      </Field>
-      <Field label="Status">
-        <div style={{ display: 'flex', gap: 8 }}>
-          {['future', 'live', 'past'].map(s => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setStatus(s)}
-              style={{
-                padding: '8px 18px',
-                background: 'transparent',
-                border: '1px solid ' + (status === s ? 'var(--color-accent)' : 'var(--color-border)'),
-                color: status === s ? 'var(--color-accent)' : 'var(--color-text-muted)',
-                fontFamily: 'var(--font-heading)',
-                fontSize: 13,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                cursor: 'pointer',
-              }}
-            >{s}</button>
           ))}
         </div>
       </Field>
