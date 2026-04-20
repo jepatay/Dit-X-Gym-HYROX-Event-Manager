@@ -78,11 +78,19 @@ function CategoriesTab({ config, onSave, saved }) {
     setCats(cs => cs.map(c => c.id === id ? { ...c, label } : c))
   }
 
+  function resetToDefaults() {
+    if (!confirm('Reset categories to defaults? This will restore the standard list and disable any removed categories. Your custom labels will be lost.')) return
+    setCats(DEFAULT_CONFIG.categories)
+  }
+
   return (
     <div>
-      <p style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 20 }}>
-        Built-in categories cannot be deleted. You can rename or disable them.
-      </p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: 13, margin: 0 }}>
+          You can rename or disable categories. Use "Reset to Defaults" to restore the standard list.
+        </p>
+        <button onClick={resetToDefaults} style={btnSecondary}>Reset to Defaults</button>
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
         {cats.map(cat => (
           <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
