@@ -6,6 +6,16 @@ import { secondsToHHMMSS } from '../utils/timeUtils'
 
 const CACHE_KEY = (slug) => `ditxgym_event_${slug}`
 
+const BG       = '#0f1923'
+const SURFACE  = '#1e2d45'
+const SURFACE2 = '#243352'
+const BORDER   = '#2d4060'
+const BORDER2  = '#1a2840'
+const ACCENT   = '#e8621a'
+const TEXT     = '#f0f4f8'
+const MUTED    = '#7a9abe'
+const MUTED2   = '#5a7090'
+
 const STATION_ORDER = [
   { key: 'run',          label: 'Run' },
   { key: 'skiErg',       label: 'Ski Erg' },
@@ -37,14 +47,11 @@ export default function PublicEventPage() {
   const [expandedWeights, setExpandedWeights] = useState({})
   const [activeTab, setActiveTab] = useState('startlist')
 
-  useEffect(() => {
-    loadData()
-  }, [slug])
+  useEffect(() => { loadData() }, [slug])
 
   async function loadData() {
     try {
-      const eventsRef = collection(db, 'events')
-      const q = query(eventsRef, where('publicSlug', '==', slug))
+      const q = query(collection(db, 'events'), where('publicSlug', '==', slug))
       const snap = await getDocs(q)
       if (snap.empty) { setLoading(false); return }
 
@@ -63,16 +70,12 @@ export default function PublicEventPage() {
       setTeams(teamsData)
       setConfig(configData)
       setOffline(false)
-
       localStorage.setItem(CACHE_KEY(slug), JSON.stringify({ event: eventData, teams: teamsData, config: configData }))
     } catch {
       const cached = localStorage.getItem(CACHE_KEY(slug))
       if (cached) {
         const data = JSON.parse(cached)
-        setEvent(data.event)
-        setTeams(data.teams)
-        setConfig(data.config)
-        setOffline(true)
+        setEvent(data.event); setTeams(data.teams); setConfig(data.config); setOffline(true)
       }
     } finally {
       setLoading(false)
@@ -81,16 +84,16 @@ export default function PublicEventPage() {
 
   if (loading) {
     return (
-      <div style={{ background: '#0f0f0f', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: '#888', fontFamily: 'sans-serif' }}>Loading...</p>
+      <div style={{ background: BG, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: MUTED, fontFamily: 'Inter, sans-serif' }}>Loading...</p>
       </div>
     )
   }
 
   if (!event) {
     return (
-      <div style={{ background: '#0f0f0f', minHeight: '100vh', padding: 32 }}>
-        <p style={{ color: '#888', fontFamily: 'sans-serif' }}>Event not found.</p>
+      <div style={{ background: BG, minHeight: '100vh', padding: 32 }}>
+        <p style={{ color: MUTED, fontFamily: 'Inter, sans-serif' }}>Event not found.</p>
       </div>
     )
   }
@@ -100,7 +103,6 @@ export default function PublicEventPage() {
   const weightSheet = { ...(config?.weightCheatSheet || {}), ...(event.weightOverrides || {}) }
   const weightCats = config?.categories?.filter(c => weightSheet[c.id]) || []
 
-  // Leaderboard: teams with finishTimeSeconds, grouped by category
   const finishedTeams = teams.filter(t => t.finishTimeSeconds != null)
   const leaderboardByCategory = []
   if (config?.categories) {
@@ -108,19 +110,13 @@ export default function PublicEventPage() {
       const catTeams = finishedTeams
         .filter(t => t.categoryId === cat.id)
         .sort((a, b) => a.finishTimeSeconds - b.finishTimeSeconds)
-      if (catTeams.length > 0) {
-        leaderboardByCategory.push({ cat, catTeams })
-      }
+      if (catTeams.length > 0) leaderboardByCategory.push({ cat, catTeams })
     }
   } else {
-    // No categories config — show all finished teams ungrouped
     const sorted = [...finishedTeams].sort((a, b) => a.finishTimeSeconds - b.finishTimeSeconds)
-    if (sorted.length > 0) {
-      leaderboardByCategory.push({ cat: { id: '_all', label: 'Results' }, catTeams: sorted })
-    }
+    if (sorted.length > 0) leaderboardByCategory.push({ cat: { id: '_all', label: 'Results' }, catTeams: sorted })
   }
 
-  // Staff: config staff filtered by event.selectedStaffIds
   const selectedStaff = (config?.staff || []).filter(s => (event.selectedStaffIds || []).includes(s.id))
 
   const tabs = [
@@ -130,41 +126,33 @@ export default function PublicEventPage() {
   ]
 
   return (
-    <div style={{ background: '#0f0f0f', color: '#fff', minHeight: '100vh', fontFamily: 'Inter, sans-serif', maxWidth: 600, margin: '0 auto', padding: '0 0 60px' }}>
+    <div style={{ background: BG, color: TEXT, minHeight: '100vh', fontFamily: 'Inter, sans-serif', maxWidth: 600, margin: '0 auto' }}>
       {offline && (
-        <div style={{ background: '#1a1400', borderBottom: '1px solid #f59e0b44', padding: '8px 16px', fontSize: 12, color: '#f59e0b', textAlign: 'center' }}>
+        <div style={{ background: '#1a1400', borderBottom: `1px solid ${ACCENT}44`, padding: '8px 16px', fontSize: 12, color: '#f59e0b', textAlign: 'center' }}>
           Offline — showing cached data
         </div>
       )}
 
-      {/* Event Header */}
-      <div style={{ background: '#1a1a1a', borderBottom: '1px solid #2a2a2a', padding: '24px 20px' }}>
+      {/* Header */}
+      <div style={{ background: SURFACE, borderBottom: `1px solid ${BORDER}`, padding: '24px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-          <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 800, fontSize: 20, color: '#E63329', textTransform: 'uppercase' }}>DIT X-GYM</span>
+          <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 800, fontSize: 20, color: ACCENT, textTransform: 'uppercase' }}>DIT X-GYM</span>
           <StatusBadge status={status} />
         </div>
-        <h1 style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 32, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: 4 }}>
+        <h1 style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 32, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: 4, color: TEXT }}>
           {event.name}
         </h1>
-        <p style={{ fontFamily: 'DM Mono, monospace', color: '#888', fontSize: 14 }}>{event.date}</p>
+        <p style={{ fontFamily: 'DM Mono, monospace', color: MUTED, fontSize: 14 }}>{event.date}</p>
         {event.eventType && (
-          <p style={{ fontFamily: 'Barlow Condensed, sans-serif', color: '#666', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>{event.eventType}</p>
+          <p style={{ fontFamily: 'Barlow Condensed, sans-serif', color: MUTED2, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>{event.eventType}</p>
         )}
-
         {(event.links || []).length > 0 && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
             {event.links.map((link, i) => link.url && (
               <a key={i} href={link.url} target="_blank" rel="noreferrer" style={{
-                padding: '7px 14px',
-                background: '#E63329',
-                color: '#fff',
-                fontFamily: 'Barlow Condensed, sans-serif',
-                fontSize: 13,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                fontWeight: 700,
-                textDecoration: 'none',
-                display: 'inline-block',
+                padding: '7px 14px', background: ACCENT, color: '#fff',
+                fontFamily: 'Barlow Condensed, sans-serif', fontSize: 13,
+                textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, textDecoration: 'none',
               }}>
                 {link.label || link.url}
               </a>
@@ -174,26 +162,18 @@ export default function PublicEventPage() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '2px solid #2a2a2a', background: '#141414' }}>
+      <div style={{ display: 'flex', borderBottom: `2px solid ${BORDER}`, background: '#192438' }}>
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             style={{
-              flex: 1,
-              padding: '12px 8px',
-              background: 'transparent',
-              border: 'none',
-              borderBottom: activeTab === tab.id ? '2px solid #E63329' : '2px solid transparent',
+              flex: 1, padding: '12px 8px', background: 'transparent', border: 'none',
+              borderBottom: activeTab === tab.id ? `2px solid ${ACCENT}` : '2px solid transparent',
               marginBottom: -2,
-              color: activeTab === tab.id ? '#E63329' : '#888',
-              fontFamily: 'Barlow Condensed, sans-serif',
-              fontSize: 15,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.07em',
-              cursor: 'pointer',
-              transition: 'color 0.15s',
+              color: activeTab === tab.id ? ACCENT : MUTED,
+              fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, fontWeight: 700,
+              textTransform: 'uppercase', letterSpacing: '0.07em', cursor: 'pointer',
             }}
           >
             {tab.label}
@@ -207,7 +187,7 @@ export default function PublicEventPage() {
           {waves.map(wave => {
             if (wave.isRestWave) {
               return (
-                <div key={wave.id} style={{ padding: '12px 20px', color: '#666', fontSize: 13, fontStyle: 'italic', textAlign: 'center', borderBottom: '1px solid #2a2a2a' }}>
+                <div key={wave.id} style={{ padding: '12px 20px', color: MUTED2, fontSize: 13, fontStyle: 'italic', textAlign: 'center', borderBottom: `1px solid ${BORDER}` }}>
                   ── {wave.label} — {wave.durationMinutes} min ──
                 </div>
               )
@@ -216,17 +196,17 @@ export default function PublicEventPage() {
             if (waveTeams.length === 0) return null
             return (
               <div key={wave.id}>
-                <div style={{ background: '#1a1a1a', padding: '8px 20px', borderBottom: '1px solid #2a2a2a', borderTop: '1px solid #2a2a2a' }}>
-                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700, textTransform: 'uppercase' }}>{wave.label}</span>
-                  <span style={{ marginLeft: 12, fontFamily: 'DM Mono, monospace', fontSize: 13, color: '#888' }}>{wave.startTime}</span>
+                <div style={{ background: SURFACE, padding: '8px 20px', borderBottom: `1px solid ${BORDER}`, borderTop: `1px solid ${BORDER}` }}>
+                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700, textTransform: 'uppercase', color: TEXT }}>{wave.label}</span>
+                  <span style={{ marginLeft: 12, fontFamily: 'DM Mono, monospace', fontSize: 13, color: MUTED }}>{wave.startTime}</span>
                 </div>
                 {waveTeams.map(team => (
-                  <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #1e1e1e', gap: 12 }}>
-                    <span style={{ fontFamily: 'DM Mono, monospace', color: '#E63329', fontWeight: 700, fontSize: 16, minWidth: 40 }}>{team.bibNumber}</span>
-                    <span style={{ fontFamily: 'DM Mono, monospace', color: '#888', fontSize: 13, minWidth: 44 }}>{team.scheduledTime}</span>
+                  <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', borderBottom: `1px solid ${BORDER2}`, gap: 12 }}>
+                    <span style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 16, minWidth: 40 }}>{team.bibNumber}</span>
+                    <span style={{ fontFamily: 'DM Mono, monospace', color: MUTED, fontSize: 13, minWidth: 44 }}>{team.scheduledTime}</span>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: 15 }}>{team.name}</div>
-                      <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
+                      <div style={{ fontWeight: 600, fontSize: 15, color: TEXT }}>{team.name}</div>
+                      <div style={{ fontSize: 12, color: MUTED2, marginTop: 2 }}>
                         {team.athlete1?.firstName} {team.athlete1?.lastName}
                         {team.athlete2?.firstName && <> / {team.athlete2.firstName} {team.athlete2.lastName}</>}
                       </div>
@@ -243,34 +223,32 @@ export default function PublicEventPage() {
       {activeTab === 'leaderboard' && (
         <Section title="Leaderboard">
           {leaderboardByCategory.length === 0 ? (
-            <p style={{ padding: '24px 20px', color: '#666', fontFamily: 'DM Mono, monospace', fontSize: 13 }}>No results yet</p>
+            <p style={{ padding: '24px 20px', color: MUTED2, fontFamily: 'DM Mono, monospace', fontSize: 13 }}>No results yet</p>
           ) : (
             leaderboardByCategory.map(({ cat, catTeams }) => (
               <div key={cat.id}>
-                <div style={{ background: '#1a1a1a', padding: '8px 20px', borderBottom: '1px solid #2a2a2a', borderTop: '1px solid #2a2a2a' }}>
-                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, fontWeight: 700, textTransform: 'uppercase', color: '#ccc' }}>{cat.label}</span>
+                <div style={{ background: SURFACE, padding: '8px 20px', borderBottom: `1px solid ${BORDER}`, borderTop: `1px solid ${BORDER}` }}>
+                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, fontWeight: 700, textTransform: 'uppercase', color: MUTED }}>{cat.label}</span>
                 </div>
-                {/* Header row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '36px 40px 1fr auto', gap: 8, padding: '6px 20px', borderBottom: '1px solid #222' }}>
-                  <span style={{ fontSize: 10, color: '#555', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em' }}>#</span>
-                  <span style={{ fontSize: 10, color: '#555', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Bib</span>
-                  <span style={{ fontSize: 10, color: '#555', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Team</span>
-                  <span style={{ fontSize: 10, color: '#555', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Time</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '36px 40px 1fr auto', gap: 8, padding: '6px 20px', borderBottom: `1px solid ${SURFACE2}` }}>
+                  {['#', 'Bib', 'Team', 'Time'].map(h => (
+                    <span key={h} style={{ fontSize: 10, color: MUTED2, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</span>
+                  ))}
                 </div>
                 {catTeams.map((team, idx) => (
-                  <div key={team.id} style={{ display: 'grid', gridTemplateColumns: '36px 40px 1fr auto', gap: 8, padding: '12px 20px', borderBottom: '1px solid #1e1e1e', alignItems: 'center' }}>
-                    <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 15, color: idx === 0 ? '#f59e0b' : idx === 1 ? '#9ca3af' : idx === 2 ? '#b45309' : '#555' }}>
+                  <div key={team.id} style={{ display: 'grid', gridTemplateColumns: '36px 40px 1fr auto', gap: 8, padding: '12px 20px', borderBottom: `1px solid ${BORDER2}`, alignItems: 'center' }}>
+                    <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 15, color: idx === 0 ? '#f59e0b' : idx === 1 ? '#9ca3af' : idx === 2 ? '#b45309' : MUTED2 }}>
                       {idx + 1}
                     </span>
-                    <span style={{ fontFamily: 'DM Mono, monospace', color: '#E63329', fontWeight: 700, fontSize: 14 }}>{team.bibNumber}</span>
+                    <span style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 14 }}>{team.bibNumber}</span>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{team.name}</div>
-                      <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: TEXT }}>{team.name}</div>
+                      <div style={{ fontSize: 11, color: MUTED2, marginTop: 2 }}>
                         {team.athlete1?.firstName} {team.athlete1?.lastName}
                         {team.athlete2?.firstName && <> / {team.athlete2.firstName} {team.athlete2.lastName}</>}
                       </div>
                     </div>
-                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, color: '#E63329', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, color: ACCENT, fontWeight: 600, whiteSpace: 'nowrap' }}>
                       {secondsToHHMMSS(team.finishTimeSeconds)}
                     </span>
                   </div>
@@ -285,19 +263,19 @@ export default function PublicEventPage() {
       {activeTab === 'staff' && (
         <Section title="Staff">
           {selectedStaff.length === 0 ? (
-            <p style={{ padding: '24px 20px', color: '#666', fontFamily: 'DM Mono, monospace', fontSize: 13 }}>No staff assigned</p>
+            <p style={{ padding: '24px 20px', color: MUTED2, fontFamily: 'DM Mono, monospace', fontSize: 13 }}>No staff assigned</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {selectedStaff.map((s, i) => (
-                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', background: i % 2 === 0 ? '#161616' : '#1a1a1a' }}>
+                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', background: i % 2 === 0 ? BG : SURFACE }}>
                   {s.photoUrl ? (
                     <img src={s.photoUrl} alt={s.name} style={{ width: 48, height: 48, objectFit: 'cover', flexShrink: 0 }} />
                   ) : (
-                    <div style={{ width: 48, height: 48, background: '#2a2a2a', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 20 }}>?</div>
+                    <div style={{ width: 48, height: 48, background: SURFACE2, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED2, fontSize: 20 }}>?</div>
                   )}
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 15 }}>{s.name}</div>
-                    <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: TEXT }}>{s.name}</div>
+                    <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
                       {s.role}{s.station ? ` — ${s.station}` : ''}
                     </div>
                   </div>
@@ -313,13 +291,13 @@ export default function PublicEventPage() {
         <Section title="Maps">
           {event.maps.gymLayout && (
             <div style={{ marginBottom: 16 }}>
-              <p style={{ fontSize: 12, color: '#888', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', padding: '0 20px 8px' }}>Gym Layout</p>
+              <p style={{ fontSize: 12, color: MUTED, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', padding: '0 20px 8px' }}>Gym Layout</p>
               <img src={event.maps.gymLayout} alt="Gym Layout" style={{ width: '100%', display: 'block' }} />
             </div>
           )}
           {event.maps.runRoute && (
             <div>
-              <p style={{ fontSize: 12, color: '#888', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', padding: '0 20px 8px' }}>Run Route</p>
+              <p style={{ fontSize: 12, color: MUTED, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', padding: '0 20px 8px' }}>Run Route</p>
               <img src={event.maps.runRoute} alt="Run Route" style={{ width: '100%', display: 'block' }} />
             </div>
           )}
@@ -336,22 +314,22 @@ export default function PublicEventPage() {
               .map(({ key, label }) => weights[key] != null && weights[key] !== '' ? { key, label, val: weights[key] } : null)
               .filter(Boolean)
             return (
-              <div key={cat.id} style={{ borderBottom: '1px solid #2a2a2a' }}>
+              <div key={cat.id} style={{ borderBottom: `1px solid ${BORDER}` }}>
                 <button
                   onClick={() => setExpandedWeights(e => ({ ...e, [cat.id]: !e[cat.id] }))}
-                  style={{ width: '100%', padding: '12px 20px', background: 'transparent', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                  style={{ width: '100%', padding: '12px 20px', background: 'transparent', border: 'none', color: TEXT, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.05em' }}
                 >
                   {cat.label}
-                  <span style={{ color: '#888' }}>{isOpen ? '▲' : '▼'}</span>
+                  <span style={{ color: MUTED }}>{isOpen ? '▲' : '▼'}</span>
                 </button>
                 {isOpen && (
                   <div style={{ padding: '0 20px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
                     {orderedEntries.map(({ key, label, val }) => (
                       <div key={key}>
-                        <div style={{ fontSize: 10, color: '#666', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>
+                        <div style={{ fontSize: 10, color: MUTED2, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>
                           {label}
                         </div>
-                        <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 14, color: '#E63329', fontWeight: 500 }}>{val}</div>
+                        <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 14, color: ACCENT, fontWeight: 500 }}>{val}</div>
                       </div>
                     ))}
                   </div>
@@ -361,6 +339,45 @@ export default function PublicEventPage() {
           })}
         </Section>
       )}
+
+      {/* Footer */}
+      <footer style={{ background: SURFACE, borderTop: `2px solid ${BORDER}`, padding: '32px 20px 40px', marginTop: 40 }}>
+        <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 800, fontSize: 24, textTransform: 'uppercase', letterSpacing: '0.06em', color: TEXT, marginBottom: 14 }}>
+          DIT X-GYM
+        </div>
+        <div style={{ fontSize: 14, color: MUTED, lineHeight: 1.8, marginBottom: 20 }}>
+          Sortevej 8<br />
+          8543 Hornslet<br />
+          <br />
+          <a href="tel:+4561482200" style={{ color: MUTED, textDecoration: 'none' }}>+45 61 48 22 00</a>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <a
+            href="https://www.facebook.com/ditxgym/"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Facebook"
+            style={{ width: 40, height: 40, background: SURFACE2, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: TEXT, textDecoration: 'none' }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+            </svg>
+          </a>
+          <a
+            href="https://www.instagram.com/ditxgym/"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Instagram"
+            style={{ width: 40, height: 40, background: SURFACE2, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: TEXT, textDecoration: 'none' }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+              <circle cx="12" cy="12" r="4"/>
+              <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>
+            </svg>
+          </a>
+        </div>
+      </footer>
     </div>
   )
 }
@@ -368,8 +385,8 @@ export default function PublicEventPage() {
 function Section({ title, children }) {
   return (
     <div style={{ marginTop: 0 }}>
-      <div style={{ padding: '16px 20px 10px', borderBottom: '2px solid #E63329' }}>
-        <h2 style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#E63329' }}>
+      <div style={{ padding: '16px 20px 10px', borderBottom: `2px solid ${ACCENT}` }}>
+        <h2 style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: ACCENT }}>
           {title}
         </h2>
       </div>
@@ -379,19 +396,13 @@ function Section({ title, children }) {
 }
 
 function StatusBadge({ status }) {
-  const colors = { future: '#3b82f6', live: '#E63329', past: '#888' }
-  const color = colors[status] || '#888'
+  const colors = { future: '#3b82f6', live: '#e8621a', past: '#7a9abe' }
+  const color = colors[status] || '#7a9abe'
   return (
     <span style={{
-      fontSize: 10,
-      fontFamily: 'Barlow Condensed, sans-serif',
-      fontWeight: 700,
-      textTransform: 'uppercase',
-      letterSpacing: '0.1em',
-      padding: '2px 8px',
-      background: color + '22',
-      color,
-      border: `1px solid ${color}44`,
+      fontSize: 10, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700,
+      textTransform: 'uppercase', letterSpacing: '0.1em',
+      padding: '2px 8px', background: color + '22', color, border: `1px solid ${color}44`,
     }}>{status}</span>
   )
 }
