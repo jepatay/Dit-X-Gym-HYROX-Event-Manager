@@ -108,7 +108,7 @@ export default function EventEditor() {
           )}
         </div>
 
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: 32, overflowX: 'auto' }}>
+        <div className="hide-scrollbar" style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: 32, overflowX: 'auto' }}>
           {TABS.map((t, i) => (
             <button
               key={t}
@@ -266,8 +266,7 @@ function InfoTab({ name, setName, date, setDate, eventType, setEventType, status
 
 function TeamsTab({ eventId, waves, config }) {
   const [teams, setTeams] = useState([])
-  const [adding, setAdding] = useState(null)
-  const [editingTeam, setEditingTeam] = useState(null)
+  const [adding, setAdding] = useState(null) // { waveId, time }
 
   useEffect(() => {
     if (eventId) fetchTeams()
@@ -302,88 +301,89 @@ function TeamsTab({ eventId, waves, config }) {
         const waveTeams = teams.filter(t => t.waveId === wave.id).sort((a, b) => a.bibNumber - b.bibNumber)
         const category = config?.categories?.find(c => c.id === wave.categoryId)
         const isDouble = category?.type === 'double'
+        const starts = wave.teamCount || 0
+        const lanes = wave.lanes || 1
+        const timeSlots = Array.from({ length: starts }, (_, i) =>
+          slotTime(wave.startTime, i, wave.intervalMinutes || 0)
+        )
 
         return (
-          <div key={wave.id} style={{ marginBottom: 40 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-              <h3 style={{ fontSize: 18 }}>
+          <div key={wave.id} style={{ marginBottom: 48 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+              <h3 style={{ fontSize: 18, margin: 0 }}>
                 {wave.label}
-                <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', marginLeft: 12, fontSize: 14 }}>
-                  {wave.startTime} — {category?.label || wave.categoryId}
-                </span>
               </h3>
-              <button onClick={() => setAdding(wave.id)} style={btnSecondary}>
-                + Add {isDouble ? 'Team' : 'Athlete'}
-              </button>
+              <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: 14 }}>
+                {wave.startTime} — {category?.label || wave.categoryId}
+              </span>
+              <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
+                {starts} starts × {lanes} lane{lanes !== 1 ? 's' : ''}
+              </span>
             </div>
 
-            {adding === wave.id && (
-              <TeamForm
-                wave={wave}
-                eventId={eventId}
-                isDouble={isDouble}
-                teams={teams}
-                config={config}
-                onSaved={(newTeam) => { setTeams(ts => [...ts, newTeam]); setAdding(null) }}
-                onCancel={() => setAdding(null)}
-              />
-            )}
+            {/* Column headers */}
+            <div style={{ display: 'flex', gap: 8, paddingBottom: 6, borderBottom: '2px solid var(--color-border)', marginBottom: 2 }}>
+              <div style={{ width: 54, flexShrink: 0, fontSize: 10, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)' }}>Time</div>
+              {Array.from({ length: lanes }, (_, i) => (
+                <div key={i} style={{ flex: 1, fontSize: 10, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)' }}>
+                  Lane {i + 1}
+                </div>
+              ))}
+            </div>
 
-            {waveTeams.length === 0 ? (
-              <p style={{ color: 'var(--color-text-muted)', fontSize: 13, padding: '10px 0', borderBottom: '1px solid var(--color-border)' }}>
-                No athletes in this wave
-              </p>
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Bib</th>
-                    <th>Name</th>
-                    <th>Time</th>
-                    <th>Athlete(s)</th>
-                    <th>Status</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {waveTeams.map(team => (
-                    <tr key={team.id}>
-                      <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', fontWeight: 500 }}>{team.bibNumber}</td>
-                      <td style={{ fontWeight: 600 }}>{team.name}</td>
-                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}>{team.scheduledTime}</td>
-                      <td style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                        {team.athlete1?.firstName} {team.athlete1?.lastName}
-                        {team.athlete2?.firstName && (
-                          <span> / {team.athlete2.firstName} {team.athlete2.lastName}</span>
-                        )}
+            {timeSlots.map(time => {
+              const teamsAtTime = waveTeams.filter(t => t.scheduledTime === time).sort((a, b) => a.bibNumber - b.bibNumber)
+              const emptyLanes = Math.max(0, lanes - teamsAtTime.length)
+              const isAddingHere = adding?.waveId === wave.id && adding?.time === time
+
+              return (
+                <div key={time}>
+                  <div style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--color-border)', alignItems: 'stretch', minHeight: 56 }}>
+                    <div style={{ width: 54, flexShrink: 0, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--color-text-muted)', paddingTop: 10 }}>{time}</div>
+                    {teamsAtTime.map(team => (
+                      <div key={team.id} style={{ flex: 1, background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', padding: '8px 10px', minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', fontWeight: 700, fontSize: 13 }}>#{team.bibNumber}</span>
+                          <button onClick={() => deleteTeam(team.id)} style={{ background: 'transparent', border: 'none', color: 'var(--color-accent)', cursor: 'pointer', fontSize: 12, padding: '0 2px', lineHeight: 1 }}>✕</button>
+                        </div>
+                        <div style={{ fontWeight: 600, fontSize: 13, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{team.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {team.athlete1?.firstName} {team.athlete1?.lastName}
+                          {team.athlete2?.firstName && ` / ${team.athlete2.firstName} ${team.athlete2.lastName}`}
+                        </div>
                         {isDouble && !team.athlete2Confirmed && (
-                          <span style={{
-                            marginLeft: 8,
-                            fontSize: 10,
-                            background: 'rgba(245,158,11,0.15)',
-                            color: 'var(--color-warning)',
-                            padding: '2px 6px',
-                            fontFamily: 'var(--font-heading)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                          }}>Partner pending</span>
+                          <span style={{ fontSize: 10, background: 'rgba(245,158,11,0.15)', color: 'var(--color-warning)', padding: '1px 5px', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'inline-block', marginTop: 3 }}>Partner pending</span>
                         )}
-                      </td>
-                      <td>
-                        {team.checkedIn ? (
-                          <span style={{ color: 'var(--color-success)', fontFamily: 'var(--font-heading)', fontSize: 11, textTransform: 'uppercase' }}>✓ Checked in</span>
-                        ) : (
-                          <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>—</span>
+                        {team.checkedIn && (
+                          <span style={{ fontSize: 10, color: 'var(--color-success)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', display: 'inline-block', marginTop: 3 }}>✓ In</span>
                         )}
-                      </td>
-                      <td>
-                        <button onClick={() => deleteTeam(team.id)} style={iconBtnRed}>Delete</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                      </div>
+                    ))}
+                    {Array.from({ length: emptyLanes }, (_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setAdding(isAddingHere ? null : { waveId: wave.id, time })}
+                        style={{ flex: 1, background: 'transparent', border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '8px', fontSize: 12, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        + Add
+                      </button>
+                    ))}
+                  </div>
+                  {isAddingHere && (
+                    <TeamForm
+                      wave={wave}
+                      eventId={eventId}
+                      isDouble={isDouble}
+                      teams={teams}
+                      config={config}
+                      forcedTime={time}
+                      onSaved={(newTeam) => { setTeams(ts => [...ts, newTeam]); setAdding(null) }}
+                      onCancel={() => setAdding(null)}
+                    />
+                  )}
+                </div>
+              )
+            })}
           </div>
         )
       })}

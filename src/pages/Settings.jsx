@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, setDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import NavBar from '../components/NavBar'
 import WeightCheatSheet from '../components/WeightCheatSheet'
 import SaveConfirmation from '../components/SaveConfirmation'
-import { DEFAULT_CONFIG } from '../utils/firestoreUtils'
+import { DEFAULT_CONFIG, getOrCreateConfig } from '../utils/firestoreUtils'
 
 const TABS = ['Categories', 'Station Templates', 'Checklist', 'Weights', 'Admin Users']
 
@@ -19,8 +19,8 @@ export default function Settings() {
   }, [])
 
   async function loadConfig() {
-    const snap = await getDoc(doc(db, 'config', 'main'))
-    setConfig(snap.exists() ? snap.data() : DEFAULT_CONFIG)
+    const data = await getOrCreateConfig()
+    setConfig(data)
     setLoading(false)
   }
 
@@ -38,7 +38,7 @@ export default function Settings() {
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '24px' }}>
         <h1 style={{ fontSize: 32, marginBottom: 24 }}>Settings</h1>
 
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: 32, overflowX: 'auto' }}>
+        <div className="hide-scrollbar" style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: 32, overflowX: 'auto' }}>
           {TABS.map((t, i) => (
             <button key={t} onClick={() => setTab(i)} style={{
               padding: '10px 18px',
@@ -69,6 +69,8 @@ export default function Settings() {
 
 function CategoriesTab({ config, onSave, saved }) {
   const [cats, setCats] = useState(config?.categories || [])
+  const [newLabel, setNewLabel] = useState('')
+  const [newType, setNewType] = useState('single')
 
   function toggle(id) {
     setCats(cs => cs.map(c => c.id === id ? { ...c, enabled: !c.enabled } : c))
@@ -83,11 +85,18 @@ function CategoriesTab({ config, onSave, saved }) {
     setCats(DEFAULT_CONFIG.categories)
   }
 
+  function addCategory() {
+    if (!newLabel.trim()) return
+    const id = 'custom_' + newLabel.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') + '_' + Date.now()
+    setCats(cs => [...cs, { id, label: newLabel.trim(), type: newType, enabled: true }])
+    setNewLabel('')
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <p style={{ color: 'var(--color-text-muted)', fontSize: 13, margin: 0 }}>
-          You can rename or disable categories. Use "Reset to Defaults" to restore the standard list.
+          Rename or disable categories, or add custom ones.
         </p>
         <button onClick={resetToDefaults} style={btnSecondary}>Reset to Defaults</button>
       </div>
@@ -116,6 +125,20 @@ function CategoriesTab({ config, onSave, saved }) {
             >{cat.enabled !== false ? 'Enabled' : 'Disabled'}</button>
           </div>
         ))}
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          value={newLabel}
+          onChange={e => setNewLabel(e.target.value)}
+          placeholder="New category name..."
+          style={{ ...inputStyle, flex: 1, minWidth: 200 }}
+          onKeyDown={e => e.key === 'Enter' && addCategory()}
+        />
+        <select value={newType} onChange={e => setNewType(e.target.value)} style={selectStyle}>
+          <option value="single">Single</option>
+          <option value="double">Double</option>
+        </select>
+        <button onClick={addCategory} style={btnSecondary}>+ Add Category</button>
       </div>
       <SaveBar onSave={() => onSave({ ...config, categories: cats })} saved={saved} />
     </div>

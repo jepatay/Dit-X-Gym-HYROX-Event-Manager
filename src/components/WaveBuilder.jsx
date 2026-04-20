@@ -32,6 +32,7 @@ export default function WaveBuilder({ waves, setWaves, config, onSave, saved }) 
   const [aStart, setAStart] = useState(getDefaultStart(waves))
   const [aInterval, setAInterval] = useState(5)
   const [aTeamCount, setATeamCount] = useState(10)
+  const [aLanes, setALanes] = useState(2)
 
   const [rStart, setRStart] = useState(getDefaultStart(waves))
   const [rDuration, setRDuration] = useState(10)
@@ -49,6 +50,7 @@ export default function WaveBuilder({ waves, setWaves, config, onSave, saved }) 
       startTime: aStart,
       intervalMinutes: Number(aInterval),
       teamCount: Number(aTeamCount),
+      lanes: Number(aLanes),
       isRestWave: false,
       stations: [],
     }
@@ -59,6 +61,7 @@ export default function WaveBuilder({ waves, setWaves, config, onSave, saved }) 
     setWaves(next)
     setShowActiveForm(false)
     setALabel('')
+    setALanes(2)
     setAStart(getDefaultStart(next))
   }
 
@@ -265,8 +268,12 @@ export default function WaveBuilder({ waves, setWaves, config, onSave, saved }) 
               <input type="number" value={aInterval} onChange={e => setAInterval(e.target.value)} min={1} style={inputStyle} />
             </div>
             <div>
-              <FieldLabel>Slots</FieldLabel>
+              <FieldLabel>Starts</FieldLabel>
               <input type="number" value={aTeamCount} onChange={e => setATeamCount(e.target.value)} min={1} style={inputStyle} />
+            </div>
+            <div>
+              <FieldLabel>Lanes (per start)</FieldLabel>
+              <input type="number" value={aLanes} onChange={e => setALanes(e.target.value)} min={1} max={6} style={inputStyle} />
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
@@ -338,8 +345,12 @@ function WaveEditForm({ wave, categories, onChange, onClose }) {
               <input type="number" value={wave.intervalMinutes} onChange={e => onChange('intervalMinutes', Number(e.target.value))} min={1} style={inputStyle} />
             </div>
             <div>
-              <FieldLabel>Slots</FieldLabel>
+              <FieldLabel>Starts</FieldLabel>
               <input type="number" value={wave.teamCount} onChange={e => onChange('teamCount', Number(e.target.value))} min={1} style={inputStyle} />
+            </div>
+            <div>
+              <FieldLabel>Lanes (per start)</FieldLabel>
+              <input type="number" value={wave.lanes || 1} onChange={e => onChange('lanes', Number(e.target.value))} min={1} max={6} style={inputStyle} />
             </div>
           </>
         )}

@@ -4,10 +4,10 @@ import { db } from '../firebase'
 import { nextBibNumber } from '../utils/bibUtils'
 import { slotTime } from '../utils/timeUtils'
 
-export default function TeamForm({ wave, eventId, isDouble, teams, config, onSaved, onCancel }) {
+export default function TeamForm({ wave, eventId, isDouble, teams, config, onSaved, onCancel, forcedTime }) {
   const bib = nextBibNumber(teams)
   const slotIndex = teams.filter(t => t.waveId === wave.id).length
-  const defaultTime = slotTime(wave.startTime || '00:00', slotIndex, wave.intervalMinutes || 5)
+  const defaultTime = forcedTime || slotTime(wave.startTime || '00:00', slotIndex, wave.intervalMinutes || 5)
 
   const [name, setName] = useState('')
   const [scheduledTime, setScheduledTime] = useState(defaultTime)
@@ -69,14 +69,16 @@ export default function TeamForm({ wave, eventId, isDouble, teams, config, onSav
             autoFocus
           />
         </div>
-        <div>
-          <Label>Start Time</Label>
-          <input
-            value={scheduledTime}
-            onChange={e => setScheduledTime(e.target.value)}
-            style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
-          />
-        </div>
+        {!forcedTime && (
+          <div>
+            <Label>Start Time</Label>
+            <input
+              value={scheduledTime}
+              onChange={e => setScheduledTime(e.target.value)}
+              style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
+            />
+          </div>
+        )}
       </div>
 
       <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 16, marginBottom: 16 }}>

@@ -1,11 +1,14 @@
 const WEIGHT_FIELDS = [
+  { key: 'skiErg', label: 'SkiErg' },
   { key: 'sledPush', label: 'Sled Push' },
   { key: 'sledPull', label: 'Sled Pull' },
-  { key: 'sandbag', label: 'Sandbag' },
-  { key: 'wallBall', label: 'Wall Ball' },
-  { key: 'farmerCarry', label: 'Farmer Carry' },
-  { key: 'run', label: 'Run' },
   { key: 'burpee', label: 'Burpee Broad Jump' },
+  { key: 'rowing', label: 'Rowing' },
+  { key: 'farmerCarry', label: 'Farmer Carry' },
+  { key: 'sandbag', label: 'Sandbag Weight' },
+  { key: 'lunge', label: 'Sandbag Lunges' },
+  { key: 'wallBall', label: 'Wall Ball' },
+  { key: 'run', label: 'Run' },
 ]
 
 export default function WeightCheatSheet({ config, overrides, setOverrides, readOnly }) {
