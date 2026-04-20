@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { collection, getDocs, orderBy, query } from 'firebase/firestore'
+import { collection, deleteDoc, doc, getDocs, orderBy, query, where } from 'firebase/firestore'
 import { db } from '../firebase'
 import NavBar from '../components/NavBar'
 import { getOrCreateConfig } from '../utils/firestoreUtils'
@@ -37,6 +37,14 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function deleteEvent(eventId, eventName) {
+    if (!confirm(`Delete "${eventName}"? This will also delete all athletes in this event. This cannot be undone.`)) return
+    const teamsSnap = await getDocs(query(collection(db, 'teams'), where('eventId', '==', eventId)))
+    await Promise.all(teamsSnap.docs.map(d => deleteDoc(doc(db, 'teams', d.id))))
+    await deleteDoc(doc(db, 'events', eventId))
+    setEvents(prev => prev.filter(e => e.id !== eventId))
   }
 
   return (
@@ -106,6 +114,12 @@ export default function Dashboard() {
                     {event.publicSlug && (
                       <ActionLink to={`/e/${event.publicSlug}`} external>Public ↗</ActionLink>
                     )}
+                    <button
+                      onClick={() => deleteEvent(event.id, event.name || 'Untitled Event')}
+                      style={btnDelete}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
               )
@@ -150,4 +164,18 @@ const btnPrimary = {
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
   cursor: 'pointer',
+}
+
+const btnDelete = {
+  padding: '6px 14px',
+  border: '1px solid rgba(230,51,41,0.4)',
+  color: 'var(--color-accent)',
+  fontFamily: 'var(--font-heading)',
+  fontSize: 11,
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  fontWeight: 600,
+  background: 'transparent',
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
 }
