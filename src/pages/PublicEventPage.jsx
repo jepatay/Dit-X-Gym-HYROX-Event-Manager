@@ -46,6 +46,7 @@ export default function PublicEventPage() {
   const [loading, setLoading] = useState(true)
   const [expandedWeights, setExpandedWeights] = useState({})
   const [activeTab, setActiveTab] = useState('startlist')
+  const [checkInPopup, setCheckInPopup] = useState(false)
 
   useEffect(() => { loadData() }, [slug])
 
@@ -122,7 +123,7 @@ export default function PublicEventPage() {
   const tabs = [
     { id: 'startlist', label: 'Start List' },
     { id: 'leaderboard', label: 'Leaderboard' },
-    { id: 'staff', label: 'Staff' },
+    { id: 'mapstaff', label: 'Map + Staff' },
   ]
 
   return (
@@ -181,7 +182,7 @@ export default function PublicEventPage() {
         ))}
       </div>
 
-      {/* Start List Tab */}
+      {/* ── Start List Tab ── */}
       {activeTab === 'startlist' && (
         <Section title="Start List">
           {waves.map(wave => {
@@ -204,13 +205,37 @@ export default function PublicEventPage() {
                   <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', borderBottom: `1px solid ${BORDER2}`, gap: 12 }}>
                     <span style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 16, minWidth: 40 }}>{team.bibNumber}</span>
                     <span style={{ fontFamily: 'DM Mono, monospace', color: MUTED, fontSize: 13, minWidth: 44 }}>{team.scheduledTime}</span>
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 15, color: TEXT }}>{team.name}</div>
                       <div style={{ fontSize: 12, color: MUTED2, marginTop: 2 }}>
                         {team.athlete1?.firstName} {team.athlete1?.lastName}
                         {team.athlete2?.firstName && <> / {team.athlete2.firstName} {team.athlete2.lastName}</>}
                       </div>
                     </div>
+                    {team.checkedIn ? (
+                      <span style={{
+                        fontSize: 11, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700,
+                        textTransform: 'uppercase', letterSpacing: '0.06em',
+                        color: '#22c55e', background: 'rgba(34,197,94,0.12)',
+                        border: '1px solid rgba(34,197,94,0.3)',
+                        padding: '3px 8px', whiteSpace: 'nowrap', flexShrink: 0,
+                      }}>
+                        ✓ Checked in
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setCheckInPopup(true)}
+                        style={{
+                          fontSize: 11, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700,
+                          textTransform: 'uppercase', letterSpacing: '0.06em',
+                          color: MUTED2, background: 'transparent',
+                          border: `1px solid ${BORDER}`,
+                          padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                        }}
+                      >
+                        Check in
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -219,7 +244,7 @@ export default function PublicEventPage() {
         </Section>
       )}
 
-      {/* Leaderboard Tab */}
+      {/* ── Leaderboard Tab ── */}
       {activeTab === 'leaderboard' && (
         <Section title="Leaderboard">
           {leaderboardByCategory.length === 0 ? (
@@ -259,85 +284,88 @@ export default function PublicEventPage() {
         </Section>
       )}
 
-      {/* Staff Tab */}
-      {activeTab === 'staff' && (
-        <Section title="Staff">
-          {selectedStaff.length === 0 ? (
-            <p style={{ padding: '24px 20px', color: MUTED2, fontFamily: 'DM Mono, monospace', fontSize: 13 }}>No staff assigned</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {selectedStaff.map((s, i) => (
-                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', background: i % 2 === 0 ? BG : SURFACE }}>
-                  {s.photoUrl ? (
-                    <img src={s.photoUrl} alt={s.name} style={{ width: 48, height: 48, objectFit: 'cover', flexShrink: 0 }} />
-                  ) : (
-                    <div style={{ width: 48, height: 48, background: SURFACE2, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED2, fontSize: 20 }}>?</div>
-                  )}
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: TEXT }}>{s.name}</div>
-                    <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
-                      {s.role}{s.station ? ` — ${s.station}` : ''}
+      {/* ── Map + Staff Tab ── */}
+      {activeTab === 'mapstaff' && (
+        <>
+          {/* Staff */}
+          <Section title="Staff">
+            {selectedStaff.length === 0 ? (
+              <p style={{ padding: '24px 20px', color: MUTED2, fontFamily: 'DM Mono, monospace', fontSize: 13 }}>No staff assigned</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {selectedStaff.map((s, i) => (
+                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', background: i % 2 === 0 ? BG : SURFACE }}>
+                    {s.photoUrl ? (
+                      <img src={s.photoUrl} alt={s.name} style={{ width: 48, height: 48, objectFit: 'cover', flexShrink: 0 }} />
+                    ) : (
+                      <div style={{ width: 48, height: 48, background: SURFACE2, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED2, fontSize: 20 }}>?</div>
+                    )}
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: TEXT }}>{s.name}</div>
+                      <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
+                        {s.role}{s.station ? ` — ${s.station}` : ''}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Section>
-      )}
-
-      {/* Maps — always visible */}
-      {(event.maps?.gymLayout || event.maps?.runRoute) && (
-        <Section title="Maps">
-          {event.maps.gymLayout && (
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ fontSize: 12, color: MUTED, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', padding: '0 20px 8px' }}>Gym Layout</p>
-              <img src={event.maps.gymLayout} alt="Gym Layout" style={{ width: '100%', display: 'block' }} />
-            </div>
-          )}
-          {event.maps.runRoute && (
-            <div>
-              <p style={{ fontSize: 12, color: MUTED, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', padding: '0 20px 8px' }}>Run Route</p>
-              <img src={event.maps.runRoute} alt="Run Route" style={{ width: '100%', display: 'block' }} />
-            </div>
-          )}
-        </Section>
-      )}
-
-      {/* Station Reference — always visible */}
-      {weightCats.length > 0 && (
-        <Section title="Station Reference">
-          {weightCats.map(cat => {
-            const weights = weightSheet[cat.id] || {}
-            const isOpen = expandedWeights[cat.id]
-            const orderedEntries = STATION_ORDER
-              .map(({ key, label }) => weights[key] != null && weights[key] !== '' ? { key, label, val: weights[key] } : null)
-              .filter(Boolean)
-            return (
-              <div key={cat.id} style={{ borderBottom: `1px solid ${BORDER}` }}>
-                <button
-                  onClick={() => setExpandedWeights(e => ({ ...e, [cat.id]: !e[cat.id] }))}
-                  style={{ width: '100%', padding: '12px 20px', background: 'transparent', border: 'none', color: TEXT, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.05em' }}
-                >
-                  {cat.label}
-                  <span style={{ color: MUTED }}>{isOpen ? '▲' : '▼'}</span>
-                </button>
-                {isOpen && (
-                  <div style={{ padding: '0 20px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
-                    {orderedEntries.map(({ key, label, val }) => (
-                      <div key={key}>
-                        <div style={{ fontSize: 10, color: MUTED2, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>
-                          {label}
-                        </div>
-                        <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 14, color: ACCENT, fontWeight: 500 }}>{val}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                ))}
               </div>
-            )
-          })}
-        </Section>
+            )}
+          </Section>
+
+          {/* Maps */}
+          {(event.maps?.gymLayout || event.maps?.runRoute) && (
+            <Section title="Maps">
+              {event.maps.gymLayout && (
+                <div style={{ marginBottom: 16 }}>
+                  <p style={{ fontSize: 12, color: MUTED, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', padding: '0 20px 8px' }}>Gym Layout</p>
+                  <img src={event.maps.gymLayout} alt="Gym Layout" style={{ width: '100%', display: 'block' }} />
+                </div>
+              )}
+              {event.maps.runRoute && (
+                <div>
+                  <p style={{ fontSize: 12, color: MUTED, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', padding: '0 20px 8px' }}>Run Route</p>
+                  <img src={event.maps.runRoute} alt="Run Route" style={{ width: '100%', display: 'block' }} />
+                </div>
+              )}
+            </Section>
+          )}
+
+          {/* Stations */}
+          {weightCats.length > 0 && (
+            <Section title="Stations">
+              {weightCats.map(cat => {
+                const weights = weightSheet[cat.id] || {}
+                const isOpen = expandedWeights[cat.id]
+                const orderedEntries = STATION_ORDER
+                  .map(({ key, label }) => weights[key] != null && weights[key] !== '' ? { key, label, val: weights[key] } : null)
+                  .filter(Boolean)
+                return (
+                  <div key={cat.id} style={{ borderBottom: `1px solid ${BORDER}` }}>
+                    <button
+                      onClick={() => setExpandedWeights(e => ({ ...e, [cat.id]: !e[cat.id] }))}
+                      style={{ width: '100%', padding: '12px 20px', background: 'transparent', border: 'none', color: TEXT, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                    >
+                      {cat.label}
+                      <span style={{ color: MUTED }}>{isOpen ? '▲' : '▼'}</span>
+                    </button>
+                    {isOpen && (
+                      <div style={{ padding: '0 20px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
+                        {orderedEntries.map(({ key, label, val }) => (
+                          <div key={key}>
+                            <div style={{ fontSize: 10, color: MUTED2, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>
+                              {label}
+                            </div>
+                            <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 14, color: ACCENT, fontWeight: 500 }}>{val}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </Section>
+          )}
+        </>
       )}
 
       {/* Footer */}
@@ -378,6 +406,44 @@ export default function PublicEventPage() {
           </a>
         </div>
       </footer>
+
+      {/* Check-in popup */}
+      {checkInPopup && (
+        <div
+          onClick={() => setCheckInPopup(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000, padding: 24,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: SURFACE, border: `1px solid ${BORDER}`,
+              padding: '32px 28px', maxWidth: 320, width: '100%', textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: 36, marginBottom: 16 }}>👋</div>
+            <h2 style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: TEXT, marginBottom: 12 }}>
+              Meet a Staff member
+            </h2>
+            <p style={{ color: MUTED, fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
+              Please find one of our staff members at the check-in desk to complete your registration.
+            </p>
+            <button
+              onClick={() => setCheckInPopup(false)}
+              style={{
+                padding: '10px 28px', background: ACCENT, color: '#fff', border: 'none',
+                fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, fontWeight: 700,
+                textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer',
+              }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
