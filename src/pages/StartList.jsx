@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../firebase'
+import EventNav from '../components/EventNav'
 
 export default function StartList() {
   const { id } = useParams()
@@ -20,14 +21,14 @@ export default function StartList() {
     })
   }, [id])
 
-  if (loading) return <p style={{ padding: 32, color: '#888' }}>Loading...</p>
+  if (loading) return <div><EventNav id={id} /><p style={{ padding: 32, color: '#888' }}>Loading...</p></div>
 
   const waves = (event?.waves || []).sort((a, b) => a.startTime?.localeCompare(b.startTime))
 
   return (
     <div style={{ background: '#fff', color: '#000', minHeight: '100vh', fontFamily: 'sans-serif' }}>
-      <div className="no-print" style={{ padding: '16px 24px', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <a href={`/event/${id}`} style={{ color: '#888', fontSize: 13 }}>← Back to event</a>
+      <EventNav id={id} eventName={event?.name} publicSlug={event?.publicSlug} />
+      <div className="no-print" style={{ padding: '12px 24px', background: '#111', display: 'flex', justifyContent: 'flex-end' }}>
         <button onClick={() => window.print()} style={{ padding: '8px 20px', background: '#E63329', color: '#fff', border: 'none', cursor: 'pointer', fontFamily: 'sans-serif', fontSize: 13, fontWeight: 700 }}>
           Print
         </button>

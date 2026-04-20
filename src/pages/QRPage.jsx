@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { QRCodeSVG } from 'qrcode.react'
 import { db } from '../firebase'
-import NavBar from '../components/NavBar'
+import EventNav from '../components/EventNav'
 
 export default function QRPage() {
   const { id } = useParams()
@@ -20,19 +20,12 @@ export default function QRPage() {
   const baseUrl = import.meta.env.VITE_PUBLIC_BASE_URL || window.location.origin
   const publicUrl = event?.publicSlug ? `${baseUrl}/e/${event.publicSlug}` : ''
 
-  if (loading) return <div><NavBar /><p style={{ padding: 32, color: 'var(--color-text-muted)' }}>Loading...</p></div>
+  if (loading) return <div><EventNav id={id} /><p style={{ padding: 32, color: 'var(--color-text-muted)' }}>Loading...</p></div>
 
   return (
     <div>
-      <div className="no-print">
-        <NavBar />
-      </div>
+      <EventNav id={id} eventName={event?.name} publicSlug={event?.publicSlug} />
       <div style={{ maxWidth: 700, margin: '0 auto', padding: '40px 24px', textAlign: 'center' }}>
-        <div className="no-print" style={{ marginBottom: 24 }}>
-          <Link to={`/event/${id}`} style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            ← {event?.name || 'Event'}
-          </Link>
-        </div>
 
         {!publicUrl ? (
           <p style={{ color: 'var(--color-text-muted)' }}>

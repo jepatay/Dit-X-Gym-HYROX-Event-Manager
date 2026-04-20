@@ -5,6 +5,14 @@ export function secondsToMMSS(seconds) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
+export function secondsToHHMMSS(seconds) {
+  if (seconds == null) return ''
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
 export function mmssToSeconds(str) {
   const match = str.match(/^(\d{1,3}):(\d{2})$/)
   if (!match) return null
@@ -13,6 +21,31 @@ export function mmssToSeconds(str) {
 
 export function isValidMMSS(str) {
   return /^\d{1,3}:\d{2}$/.test(str)
+}
+
+export function parseTimeInput(str) {
+  if (!str) return null
+  str = str.trim()
+  // HH:MM:SS
+  const hms = str.match(/^(\d{1,2}):(\d{2}):(\d{2})$/)
+  if (hms) return parseInt(hms[1]) * 3600 + parseInt(hms[2]) * 60 + parseInt(hms[3])
+  // MM:SS
+  const ms = str.match(/^(\d{1,3}):(\d{2})$/)
+  if (ms) return parseInt(ms[1]) * 60 + parseInt(ms[2])
+  // Digits only: pad to 6 and parse as HHMMSS
+  const digits = str.match(/^(\d{4,6})$/)
+  if (digits) {
+    const d = str.padStart(6, '0')
+    const h = parseInt(d.slice(0, 2))
+    const m = parseInt(d.slice(2, 4))
+    const s = parseInt(d.slice(4, 6))
+    if (m < 60 && s < 60) return h * 3600 + m * 60 + s
+  }
+  return null
+}
+
+export function isValidTimeInput(str) {
+  return parseTimeInput(str) !== null
 }
 
 export function addMinutesToTime(timeStr, minutes) {

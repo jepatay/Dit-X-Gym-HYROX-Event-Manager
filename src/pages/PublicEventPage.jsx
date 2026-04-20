@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
-import { secondsToMMSS } from '../utils/timeUtils'
+import { secondsToHHMMSS } from '../utils/timeUtils'
 
 const CACHE_KEY = (slug) => `ditxgym_event_${slug}`
 

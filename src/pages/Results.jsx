@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { doc, getDoc, collection, getDocs, query, where, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
-import NavBar from '../components/NavBar'
+import EventNav from '../components/EventNav'
 import SaveConfirmation from '../components/SaveConfirmation'
-import { secondsToMMSS, mmssToSeconds, isValidMMSS } from '../utils/timeUtils'
+import { secondsToHHMMSS, parseTimeInput, isValidTimeInput } from '../utils/timeUtils'
 
 export default function Results() {
   const { id } = useParams()
@@ -28,7 +28,7 @@ export default function Results() {
     const ts = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
     setTeams(ts)
     const initInputs = {}
-    ts.forEach(t => { initInputs[t.id] = t.finishTimeSeconds != null ? secondsToMMSS(t.finishTimeSeconds) : '' })
+    ts.forEach(t => { initInputs[t.id] = t.finishTimeSeconds != null ? secondsToHHMMSS(t.finishTimeSeconds) : '' })
     setInputs(initInputs)
     setLoading(false)
   }
@@ -46,11 +46,11 @@ export default function Results() {
       setSaved(s => ({ ...s, [team.id]: (s[team.id] || 0) + 1 }))
       return
     }
-    if (!isValidMMSS(raw)) {
+    if (!isValidTimeInput(raw)) {
       setErrors(prev => ({ ...prev, [team.id]: true }))
       return
     }
-    const seconds = mmssToSeconds(raw)
+    const seconds = parseTimeInput(raw)
     await updateDoc(doc(db, 'teams', team.id), { finishTimeSeconds: seconds })
     const updated = teams.map(t => t.id === team.id ? { ...t, finishTimeSeconds: seconds } : t)
     const ranked = computeRanks(updated)
@@ -78,19 +78,14 @@ export default function Results() {
   const waves = (event?.waves || []).filter(w => !w.isRestWave).sort((a, b) => a.startTime?.localeCompare(b.startTime))
   const hasAnyResult = teams.some(t => t.finishTimeSeconds != null)
 
-  if (loading) return <div><NavBar /><p style={{ padding: 32, color: 'var(--color-text-muted)' }}>Loading...</p></div>
+  if (loading) return <div><EventNav id={id} /><p style={{ padding: 32, color: 'var(--color-text-muted)' }}>Loading...</p></div>
 
   return (
     <div>
-      <NavBar />
+      <EventNav id={id} eventName={event?.name} publicSlug={event?.publicSlug} />
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 8 }}>
-          <div>
-            <Link to={`/event/${id}`} style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              ← {event?.name}
-            </Link>
-            <h1 style={{ fontSize: 28, marginTop: 4 }}>Results</h1>
-          </div>
+          <h1 style={{ fontSize: 28 }}>Results</h1>
           {hasAnyResult && (
             <a href={`/event/${id}/leaderboard`} target="_blank" rel="noreferrer" style={{ ...btnSecondary, textDecoration: 'none' }}>
               View Leaderboard ↗
@@ -111,7 +106,7 @@ export default function Results() {
                     <th>Bib</th>
                     <th>Name</th>
                     <th>Athlete(s)</th>
-                    <th>Finish Time (MM:SS)</th>
+                    <th>Finish Time (HH:MM:SS)</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -139,12 +134,13 @@ export default function Results() {
                           <input
                             value={inputs[team.id] || ''}
                             onChange={e => handleInputChange(team.id, e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && saveTime(team)}
                             onBlur={() => {
-                              if (inputs[team.id] && !isValidMMSS(inputs[team.id])) {
+                              if (inputs[team.id] && !isValidTimeInput(inputs[team.id])) {
                                 setErrors(prev => ({ ...prev, [team.id]: true }))
                               }
                             }}
-                            placeholder="00:00"
+                            placeholder="00:00:00"
                             style={{
                               ...timeInput,
                               borderColor: errors[team.id] ? 'var(--color-accent)' : 'var(--color-border)',
@@ -175,6 +171,6 @@ export default function Results() {
   )
 }
 
-const timeInput = { width: 90, padding: '6px 10px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', fontFamily: 'var(--font-mono)', fontSize: 15, textAlign: 'center' }
+const timeInput = { width: 110, padding: '6px 10px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', fontFamily: 'var(--font-mono)', fontSize: 15, textAlign: 'center' }
 const btnSave = { padding: '6px 16px', background: 'var(--color-accent)', color: '#fff', border: 'none', fontFamily: 'var(--font-heading)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer' }
 const btnSecondary = { padding: '8px 18px', background: 'transparent', color: 'var(--color-text)', border: '1px solid var(--color-border)', fontFamily: 'var(--font-heading)', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', display: 'inline-block' }

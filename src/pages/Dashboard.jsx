@@ -6,8 +6,8 @@ import NavBar from '../components/NavBar'
 import { getOrCreateConfig } from '../utils/firestoreUtils'
 
 function deriveStatus(event) {
+  if (!event.date) return 'future'
   const today = new Date().toISOString().substring(0, 10)
-  if (event.status === 'live' || event.status === 'past') return event.status
   if (event.date < today) return 'past'
   if (event.date === today) return 'live'
   return 'future'

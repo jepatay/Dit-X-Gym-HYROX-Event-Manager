@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../firebase'
-import { secondsToMMSS } from '../utils/timeUtils'
+import { secondsToHHMMSS } from '../utils/timeUtils'
 
 export default function Leaderboard() {
   const { id } = useParams()
@@ -131,7 +131,7 @@ export default function Leaderboard() {
                           </div>
                         </td>
                         <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: i === 0 ? 24 : 16, fontWeight: i === 0 ? 700 : 400 }}>
-                          {secondsToMMSS(team.finishTimeSeconds)}
+                          {secondsToHHMMSS(team.finishTimeSeconds)}
                         </td>
                       </tr>
                     ))}

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { doc, getDoc, collection, getDocs, query, where, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import NavBar from '../components/NavBar'
+import EventNav from '../components/EventNav'
 
 const FILTERS = ['All', 'Not Yet', 'Checked In', 'No-shows']
 
@@ -86,21 +86,17 @@ export default function CheckIn() {
 
   const waves = (event?.waves || []).filter(w => !w.isRestWave).sort((a, b) => a.startTime?.localeCompare(b.startTime))
 
-  if (loading) return <div><NavBar /><p style={{ padding: 32, color: 'var(--color-text-muted)' }}>Loading...</p></div>
+  if (loading) return <div><EventNav id={id} /><p style={{ padding: 32, color: 'var(--color-text-muted)' }}>Loading...</p></div>
 
   return (
     <div style={{ minHeight: '100vh', paddingBottom: 40 }}>
-      <NavBar />
+      <EventNav id={id} eventName={event?.name} publicSlug={event?.publicSlug} />
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '16px' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12 }}>
           <div>
-            <Link to={`/event/${id}`} style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              ← Back
-            </Link>
             <h1 style={{ fontSize: 24, marginTop: 2 }}>Check-in</h1>
-            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 2 }}>{event?.name}</p>
           </div>
           <div style={{
             fontFamily: 'var(--font-mono)',
