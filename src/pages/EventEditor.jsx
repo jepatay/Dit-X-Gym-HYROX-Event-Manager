@@ -382,6 +382,9 @@ function EventSetupTab({ maps, setMaps, selectedStaffIds, setSelectedStaffIds, w
       await uploadBytes(storageRef, file)
       const url = await getDownloadURL(storageRef)
       setMaps(m => ({ ...m, [type]: url }))
+      if (eventId) {
+        await updateDoc(doc(db, 'events', eventId), { [`maps.${type}`]: url })
+      }
     } finally {
       setUploading(u => ({ ...u, [type]: false }))
     }
