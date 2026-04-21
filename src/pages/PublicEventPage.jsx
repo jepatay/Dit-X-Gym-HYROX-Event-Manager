@@ -24,7 +24,6 @@ const STATION_ORDER = [
   { key: 'burpee',       label: 'Burpee Broad Jump' },
   { key: 'rowing',       label: 'Row Erg' },
   { key: 'farmerCarry',  label: 'Farmers Carry' },
-  { key: 'sandbag',      label: 'Sandbag Weight' },
   { key: 'lunge',        label: 'Walking Lunges' },
   { key: 'wallBall',     label: 'Wall Ball' },
 ]
@@ -349,13 +348,17 @@ export default function PublicEventPage() {
                       <span style={{ color: MUTED }}>{isOpen ? '▲' : '▼'}</span>
                     </button>
                     {isOpen && (
-                      <div style={{ padding: '0 20px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
-                        {orderedEntries.map(({ key, label, val }) => (
-                          <div key={key}>
-                            <div style={{ fontSize: 10, color: MUTED2, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>
-                              {label}
-                            </div>
-                            <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 14, color: ACCENT, fontWeight: 500 }}>{val}</div>
+                      <div style={{ padding: '0 20px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+                        {[orderedEntries.slice(0, 5), orderedEntries.slice(5)].map((col, ci) => (
+                          <div key={ci} style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 10 }}>
+                            {col.map(({ key, label, val }) => (
+                              <div key={key}>
+                                <div style={{ fontSize: 10, color: MUTED2, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>
+                                  {label}
+                                </div>
+                                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 14, color: ACCENT, fontWeight: 500 }}>{val}</div>
+                              </div>
+                            ))}
                           </div>
                         ))}
                       </div>
