@@ -113,7 +113,10 @@ export default function PublicEventPage() {
   const status = deriveStatus(event.date)
   const waves = (event.waves || []).sort((a, b) => a.startTime?.localeCompare(b.startTime))
   const weightSheet = { ...(config?.weightCheatSheet || {}), ...(event.weightOverrides || {}) }
-  const weightCats = config?.categories?.filter(c => weightSheet[c.id]) || []
+  const eventCatType = event.eventType === 'Hybrid' ? 'hybrid' : 'hyrox'
+  const weightCats = (config?.categories || []).filter(c =>
+    weightSheet[c.id] && (c.eventType || 'hyrox') === eventCatType
+  )
 
   const finishedTeams = teams.filter(t => t.finishTimeSeconds != null)
   const leaderboardByCategory = []
