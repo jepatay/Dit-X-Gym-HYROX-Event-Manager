@@ -69,7 +69,9 @@ export default function TVDisplay() {
   const now = `${String(time.getHours()).padStart(2,'0')}:${String(time.getMinutes()).padStart(2,'0')}`
   const isToday = event.date === new Date().toISOString().slice(0, 10)
 
-  const allSorted = [...teams].sort((a, b) => (a.scheduledTime || '').localeCompare(b.scheduledTime || ''))
+  const allSorted = [...teams].sort((a, b) =>
+    (a.scheduledTime || '').localeCompare(b.scheduledTime || '') || (a.bibNumber || 0) - (b.bibNumber || 0)
+  )
   let nextAthletes
   if (isToday) {
     const upcoming = allSorted.filter(t => (t.scheduledTime || '99:99') >= now)
