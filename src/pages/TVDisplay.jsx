@@ -155,21 +155,23 @@ export default function TVDisplay() {
           {leaderboardByCat.length === 0 ? (
             <Empty>No results yet</Empty>
           ) : (
-            leaderboardByCat.map(({ cat, top3 }) => (
-              <div key={cat.id} style={{ marginBottom: 14 }}>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.1em', color: MUTED, paddingBottom: 5, borderBottom: `1px solid ${BORDER}`, marginBottom: 4 }}>
-                  {cat.label}
+            <div style={{ display: 'grid', gridTemplateColumns: leaderboardByCat.length > 4 ? '1fr 1fr' : '1fr', gap: '0 14px' }}>
+              {leaderboardByCat.map(({ cat, top3 }) => (
+                <div key={cat.id} style={{ marginBottom: leaderboardByCat.length > 4 ? 8 : 12 }}>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: MUTED, paddingBottom: 3, borderBottom: `1px solid ${BORDER}`, marginBottom: 2 }}>
+                    {cat.label}
+                  </div>
+                  {top3.map((team, idx) => (
+                    <Row key={team.id} tight>
+                      <Cell w={18} bold size={13} style={{ color: [GOLD, SILVER, BRONZE][idx] }}>{idx + 1}</Cell>
+                      <Cell w={34} accent mono bold size={12}>{team.bibNumber}</Cell>
+                      <Cell flex size={12} bold={idx === 0}>{team.name}</Cell>
+                      <Cell w={68} mono bold size={11} accent right>{secondsToHHMMSS(team.finishTimeSeconds)}</Cell>
+                    </Row>
+                  ))}
                 </div>
-                {top3.map((team, idx) => (
-                  <Row key={team.id} compact>
-                    <Cell w={26} bold size={17} style={{ color: [GOLD, SILVER, BRONZE][idx] }}>{idx + 1}</Cell>
-                    <Cell w={44} accent mono bold size={14}>{team.bibNumber}</Cell>
-                    <Cell flex size={14} bold={idx === 0}>{team.name}</Cell>
-                    <Cell w={80} mono bold size={13} accent right>{secondsToHHMMSS(team.finishTimeSeconds)}</Cell>
-                  </Row>
-                ))}
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </Panel>
 
@@ -229,11 +231,11 @@ function Panel({ title, subtitle, children }) {
   )
 }
 
-function Row({ children, header, compact }) {
+function Row({ children, header, compact, tight }) {
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 8,
-      padding: compact ? '5px 0' : '8px 0',
+      display: 'flex', alignItems: 'center', gap: 6,
+      padding: tight ? '2px 0' : compact ? '5px 0' : '8px 0',
       borderBottom: header ? `1px solid ${BORDER}` : `1px solid ${BORDER2}`,
       marginBottom: header ? 4 : 0,
     }}>
