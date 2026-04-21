@@ -95,7 +95,7 @@ export default function TVDisplay() {
   const staff = (config?.staff || []).filter(s => (event.selectedStaffIds || []).includes(s.id))
   const baseUrl = import.meta.env.VITE_PUBLIC_BASE_URL || window.location.origin
   const publicUrl = event.publicSlug ? `${baseUrl}/e/${event.publicSlug}` : ''
-  const clockStr = time.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' })
+  const clockStr = time.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 
   return (
     <div style={{ background: BG, color: TEXT, width: '100vw', height: '100vh', overflow: 'hidden', fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column' }}>
