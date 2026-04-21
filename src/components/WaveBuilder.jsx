@@ -22,7 +22,13 @@ function validateWaves(waves) {
   return null
 }
 
-export default function WaveBuilder({ waves, setWaves, config, onSave, saved }) {
+function eventTypeToCatType(eventType) {
+  if (eventType === 'Hybrid') return 'hybrid'
+  if (eventType === 'Full HYROX') return 'hyrox'
+  return null // Custom → show all
+}
+
+export default function WaveBuilder({ waves, setWaves, config, eventType, onSave, saved }) {
   const [showActiveForm, setShowActiveForm] = useState(false)
   const [showRestForm, setShowRestForm] = useState(false)
   const [conflict, setConflict] = useState(null)
@@ -40,7 +46,10 @@ export default function WaveBuilder({ waves, setWaves, config, onSave, saved }) 
 
   const [editingId, setEditingId] = useState(null)
 
-  const categories = (config?.categories || []).filter(c => c.enabled !== false)
+  const catTypeFilter = eventTypeToCatType(eventType)
+  const categories = (config?.categories || []).filter(c =>
+    !catTypeFilter || (c.eventType || 'hyrox') === catTypeFilter
+  )
 
   function addActiveWave() {
     const wave = {

@@ -72,82 +72,104 @@ export default function Settings() {
 function CategoriesTab({ config, onSave, saved }) {
   const [cats, setCats] = useState(config?.categories || [])
   const [newLabel, setNewLabel] = useState('')
-  const [newType, setNewType] = useState('single')
-
-  function toggle(id) {
-    setCats(cs => cs.map(c => c.id === id ? { ...c, enabled: !c.enabled } : c))
-  }
+  const [newAthleteType, setNewAthleteType] = useState('single')
+  const [newEventType, setNewEventType] = useState('hyrox')
 
   function updateLabel(id, label) {
     setCats(cs => cs.map(c => c.id === id ? { ...c, label } : c))
   }
 
+  function removeCategory(id) {
+    if (!confirm('Remove this category?')) return
+    setCats(cs => cs.filter(c => c.id !== id))
+  }
+
   function resetToDefaults() {
-    if (!confirm('Reset categories to defaults? This will restore the standard list and disable any removed categories. Your custom labels will be lost.')) return
+    if (!confirm('Reset categories to defaults? Custom categories will be lost.')) return
     setCats(DEFAULT_CONFIG.categories)
   }
 
   function addCategory() {
     if (!newLabel.trim()) return
     const id = 'custom_' + newLabel.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') + '_' + Date.now()
-    setCats(cs => [...cs, { id, label: newLabel.trim(), type: newType, enabled: true }])
+    setCats(cs => [...cs, { id, label: newLabel.trim(), type: newAthleteType, eventType: newEventType, enabled: true }])
     setNewLabel('')
   }
+
+  const EVENT_TYPES = [
+    { id: 'hyrox', label: 'HYROX', color: '#e8621a' },
+    { id: 'hybrid', label: 'HYBRID', color: '#3b82f6' },
+    { id: 'custom', label: 'CUSTOM', color: '#7a9abe' },
+  ]
+
+  const grouped = EVENT_TYPES.map(et => ({
+    ...et,
+    cats: cats.filter(c => (c.eventType || 'hyrox') === et.id),
+  })).filter(g => g.cats.length > 0)
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <p style={{ color: 'var(--color-text-muted)', fontSize: 13, margin: 0 }}>
-          Rename or disable categories, or add custom ones.
+          Categories are grouped by event type and appear in wave selection accordingly.
         </p>
         <button onClick={resetToDefaults} style={btnSecondary}>Reset to Defaults</button>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
-        {cats.map(cat => (
-          <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-            <input
-              value={cat.label}
-              onChange={e => updateLabel(cat.id, e.target.value)}
-              style={{ width: 180, minWidth: 0, background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', padding: '6px 10px', fontSize: 13 }}
-            />
-            <button
-              onClick={() => toggle(cat.id)}
-              style={{
-                padding: '5px 14px',
-                background: cat.enabled !== false ? 'rgba(34,197,94,0.1)' : 'transparent',
-                border: '1px solid ' + (cat.enabled !== false ? 'rgba(34,197,94,0.3)' : 'var(--color-border)'),
-                color: cat.enabled !== false ? 'var(--color-success)' : 'var(--color-text-muted)',
-                fontFamily: 'var(--font-heading)',
-                fontSize: 11,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                cursor: 'pointer',
-              }}
-            >{cat.enabled !== false ? 'Enabled' : 'Disabled'}</button>
+
+      {grouped.map(group => (
+        <div key={group.id} style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, paddingBottom: 6, borderBottom: `2px solid ${group.color}` }}>
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: group.color }}>{group.label}</span>
+            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{group.cats.length} categories</span>
           </div>
-        ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {group.cats.map(cat => (
+              <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                <input
+                  value={cat.label}
+                  onChange={e => updateLabel(cat.id, e.target.value)}
+                  style={{ width: 220, minWidth: 0, background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', padding: '6px 10px', fontSize: 13 }}
+                />
+                <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--color-surface-raised)', padding: '3px 8px', border: '1px solid var(--color-border)' }}>
+                  {cat.type === 'double' ? 'Double' : 'Single'}
+                </span>
+                <button onClick={() => removeCategory(cat.id)} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 14, padding: '4px 8px' }}>✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <div style={{ marginTop: 8, padding: '16px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', marginBottom: 24 }}>
+        <div style={{ fontSize: 11, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)', marginBottom: 12 }}>Add Custom Category</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            value={newLabel}
+            onChange={e => setNewLabel(e.target.value)}
+            placeholder="Category name..."
+            style={{ ...inputStyle, flex: 1, minWidth: 160 }}
+            onKeyDown={e => e.key === 'Enter' && addCategory()}
+          />
+          <select value={newAthleteType} onChange={e => setNewAthleteType(e.target.value)} style={selectStyle}>
+            <option value="single">Single</option>
+            <option value="double">Double</option>
+          </select>
+          <select value={newEventType} onChange={e => setNewEventType(e.target.value)} style={selectStyle}>
+            <option value="hyrox">HYROX</option>
+            <option value="hybrid">HYBRID</option>
+            <option value="custom">CUSTOM</option>
+          </select>
+          <button onClick={addCategory} style={btnSecondary}>+ Add</button>
+        </div>
       </div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-        <input
-          value={newLabel}
-          onChange={e => setNewLabel(e.target.value)}
-          placeholder="New category name..."
-          style={{ ...inputStyle, flex: 1, minWidth: 200 }}
-          onKeyDown={e => e.key === 'Enter' && addCategory()}
-        />
-        <select value={newType} onChange={e => setNewType(e.target.value)} style={selectStyle}>
-          <option value="single">Single</option>
-          <option value="double">Double</option>
-        </select>
-        <button onClick={addCategory} style={btnSecondary}>+ Add Category</button>
-      </div>
+
       <SaveBar onSave={() => onSave({ ...config, categories: cats })} saved={saved} />
     </div>
   )
 }
 
 function StationsTab({ config, onSave, saved }) {
-  const enabledCats = (config?.categories || []).filter(c => c.enabled !== false)
+  const enabledCats = (config?.categories || [])
 
   function initStations() {
     const result = {}
@@ -187,11 +209,20 @@ function StationsTab({ config, onSave, saved }) {
       <p style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 20 }}>
         Configure stations per category. Pre-filled with standard HYROX defaults. Free-text values (e.g. 1000m / 102kg / 24kg each).
       </p>
-      {enabledCats.map(cat => {
+      {['hyrox', 'hybrid', 'custom'].map(evType => {
+        const typeCats = enabledCats.filter(c => (c.eventType || 'hyrox') === evType)
+        if (typeCats.length === 0) return null
+        const typeColor = evType === 'hyrox' ? '#e8621a' : evType === 'hybrid' ? '#3b82f6' : '#7a9abe'
+        return (
+          <div key={evType} style={{ marginBottom: 28 }}>
+            <div style={{ paddingBottom: 8, marginBottom: 10, borderBottom: `2px solid ${typeColor}` }}>
+              <span style={{ fontFamily: 'var(--font-heading)', fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: typeColor }}>{evType.toUpperCase()}</span>
+            </div>
+            {typeCats.map(cat => {
         const catStations = stations[cat.id] || []
         const isOpen = expandedId === cat.id
         return (
-          <div key={cat.id} style={{ marginBottom: 10, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+          <div key={cat.id} style={{ marginBottom: 8, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
             <div
               style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
               onClick={() => setExpandedId(isOpen ? null : cat.id)}
@@ -222,6 +253,9 @@ function StationsTab({ config, onSave, saved }) {
                 <button onClick={() => addStation(cat.id)} style={btnSecondary}>+ Add Station</button>
               </div>
             )}
+          </div>
+        )
+            })}
           </div>
         )
       })}

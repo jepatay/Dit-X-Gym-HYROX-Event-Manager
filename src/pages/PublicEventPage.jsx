@@ -28,6 +28,18 @@ const STATION_ORDER = [
   { key: 'wallBall',     label: 'Wall Ball' },
 ]
 
+const HYBRID_STATION_ORDER = [
+  { key: 'run',           label: 'Run' },
+  { key: 'bikeErg',       label: 'Bike Erg' },
+  { key: 'sledCombined',  label: 'Sled Push/Pull' },
+  { key: 'rowing',        label: 'Row Erg' },
+  { key: 'farmerDeadlift', label: 'Farmers Deadlift' },
+  { key: 'skiErg',        label: 'Ski Erg' },
+  { key: 'lunge',         label: 'Walking Lunges' },
+  { key: 'burpee',        label: 'Burpee Broad Jump' },
+  { key: 'assaultBike',   label: 'Assault Bike' },
+]
+
 function deriveStatus(eventDate) {
   if (!eventDate) return 'future'
   const today = new Date().toISOString().slice(0, 10)
@@ -335,7 +347,8 @@ export default function PublicEventPage() {
               {weightCats.map(cat => {
                 const weights = weightSheet[cat.id] || {}
                 const isOpen = expandedWeights[cat.id]
-                const orderedEntries = STATION_ORDER
+                const stationOrder = (cat.eventType === 'hybrid') ? HYBRID_STATION_ORDER : STATION_ORDER
+                const orderedEntries = stationOrder
                   .map(({ key, label }) => weights[key] != null && weights[key] !== '' ? { key, label, val: weights[key] } : null)
                   .filter(Boolean)
                 return (

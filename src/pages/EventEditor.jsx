@@ -148,6 +148,7 @@ export default function EventEditor() {
           <WaveBuilder
             waves={waves} setWaves={setWaves}
             config={config}
+            eventType={eventType}
             onSave={saveEvent} saved={saved}
           />
         )}
