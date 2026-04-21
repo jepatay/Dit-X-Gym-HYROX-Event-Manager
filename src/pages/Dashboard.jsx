@@ -43,10 +43,13 @@ export default function Dashboard() {
   }
 
   async function deleteEvent(eventId, eventName) {
-    if (!confirm(`Delete "${eventName}"? This will also delete all athletes in this event. This cannot be undone.`)) return
     try {
       const teamsSnap = await getDocs(query(collection(db, 'teams'), where('eventId', '==', eventId)))
-      await Promise.all(teamsSnap.docs.map(d => deleteDoc(doc(db, 'teams', d.id))))
+      if (teamsSnap.size > 0) {
+        alert(`Cannot delete "${eventName}" — it has ${teamsSnap.size} registered athlete${teamsSnap.size !== 1 ? 's' : ''}.\n\nRemove all athletes from the event first.`)
+        return
+      }
+      if (!confirm(`Delete "${eventName}"? This cannot be undone.`)) return
       await deleteDoc(doc(db, 'events', eventId))
       setEvents(prev => prev.filter(e => e.id !== eventId))
     } catch (err) {
