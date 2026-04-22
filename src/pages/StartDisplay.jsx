@@ -104,7 +104,7 @@ export default function StartDisplay() {
       clearTimeout(audioTimeoutRef.current)
       const [h, m] = nextWaveTime.split(':').map(Number)
       const target = new Date(); target.setHours(h, m, 0, 0)
-      const delay = Math.max(0, (target - new Date()) - 5000 - 250)
+      const delay = Math.max(0, (target - new Date()) - 5000 - 400)
       audioTimeoutRef.current = setTimeout(() => {
         if (audioRef.current) {
           audioRef.current.currentTime = 0
