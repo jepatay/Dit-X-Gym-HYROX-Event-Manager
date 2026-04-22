@@ -35,6 +35,7 @@ export default function StartDisplay() {
   const [teams, setTeams]   = useState([])
   const [, setTick]         = useState(0)
   const [fullscreen, setFullscreen] = useState(false)
+  const [soundEnabled, setSoundEnabled] = useState(false)
   const audioPlayedRef = useRef(null)
 
   useEffect(() => {
@@ -88,7 +89,7 @@ export default function StartDisplay() {
     .slice(0, 3)
 
   // Play countdown audio when next wave hits 5 seconds — once per wave
-  if (waves.length > 0) {
+  if (soundEnabled && waves.length > 0) {
     const [nextWaveTime] = waves[0]
     const secsToNext = secondsUntil(nextWaveTime)
     if (secsToNext <= 5 && secsToNext > 0 && audioPlayedRef.current !== nextWaveTime) {
@@ -107,8 +108,14 @@ export default function StartDisplay() {
           <h1 style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 800, fontSize: 30, textTransform: 'uppercase', letterSpacing: '0.04em', color: TEXT, margin: 0 }}>{event.name}</h1>
           <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 13, color: MUTED2, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Starting Line</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 800, fontSize: 56, color: TEXT, lineHeight: 1, letterSpacing: '-0.01em' }}>{clockStr}</span>
+          <button
+            onClick={() => setSoundEnabled(s => !s)}
+            style={{ background: soundEnabled ? ACCENT : 'transparent', border: `1px solid ${soundEnabled ? ACCENT : BORDER}`, color: soundEnabled ? '#fff' : MUTED, padding: '6px 14px', cursor: 'pointer', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em' }}
+          >
+            {soundEnabled ? '♪ Sound On' : '♪ Sound Off'}
+          </button>
           <button onClick={toggleFullscreen} style={{ background: 'transparent', border: `1px solid ${BORDER}`, color: MUTED, padding: '6px 14px', cursor: 'pointer', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             {fullscreen ? '⊠ Exit' : '⊡ Fullscreen'}
           </button>
