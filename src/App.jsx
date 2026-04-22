@@ -11,6 +11,7 @@ import Leaderboard from './pages/Leaderboard'
 import PublicEventPage from './pages/PublicEventPage'
 import Settings from './pages/Settings'
 import TVDisplay from './pages/TVDisplay'
+import StartDisplay from './pages/StartDisplay'
 
 function ProtectedRoute({ children }) {
   const user = useAuth()
@@ -26,6 +27,7 @@ function AppRoutes() {
       <Route path="/e/:slug" element={<PublicEventPage />} />
       <Route path="/event/:id/leaderboard" element={<Leaderboard />} />
       <Route path="/event/:id/tv" element={<TVDisplay />} />
+      <Route path="/event/:id/start" element={<StartDisplay />} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/event/new" element={<ProtectedRoute><EventEditor /></ProtectedRoute>} />
       <Route path="/event/:id" element={<ProtectedRoute><EventEditor /></ProtectedRoute>} />
