@@ -37,6 +37,12 @@ export default function StartDisplay() {
   const [fullscreen, setFullscreen] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(false)
   const audioPlayedRef = useRef(null)
+  const audioRef = useRef(null)
+
+  useEffect(() => {
+    audioRef.current = new Audio('/countdown.mp3')
+    audioRef.current.load()
+  }, [])
 
   useEffect(() => {
     loadData()
@@ -92,9 +98,12 @@ export default function StartDisplay() {
   if (soundEnabled && waves.length > 0) {
     const [nextWaveTime] = waves[0]
     const secsToNext = secondsUntil(nextWaveTime)
-    if (secsToNext <= 6 && secsToNext > 0 && audioPlayedRef.current !== nextWaveTime) {
+    if (secsToNext <= 5 && secsToNext > 0 && audioPlayedRef.current !== nextWaveTime) {
       audioPlayedRef.current = nextWaveTime
-      new Audio('/countdown.mp3').play().catch(() => {})
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0
+        audioRef.current.play().catch(() => {})
+      }
     }
   }
 
