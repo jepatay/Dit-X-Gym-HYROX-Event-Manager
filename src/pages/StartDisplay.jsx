@@ -81,6 +81,7 @@ export default function StartDisplay() {
   )
 
   const clockStr = new Date().toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  const isToday = event.date === new Date().toISOString().slice(0, 10)
 
   // Group teams into waves by scheduledTime
   const waveMap = {}
@@ -89,8 +90,8 @@ export default function StartDisplay() {
     if (!waveMap[team.scheduledTime]) waveMap[team.scheduledTime] = []
     waveMap[team.scheduledTime].push(team)
   }
-  // Sort waves, drop those that are more than 5s in the past, take first 3
-  const waves = Object.entries(waveMap)
+  // Only show waves on the actual event day
+  const waves = !isToday ? [] : Object.entries(waveMap)
     .sort(([a], [b]) => a.localeCompare(b))
     .filter(([t]) => secondsUntil(t) > -5)
     .slice(0, 3)
@@ -141,8 +142,15 @@ export default function StartDisplay() {
       {/* Body */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, background: BORDER2, overflow: 'hidden', minHeight: 0 }}>
         {waves.length === 0 ? (
-          <div style={{ flex: 1, background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ color: MUTED2, fontFamily: 'Barlow Condensed, sans-serif', fontSize: 32, textTransform: 'uppercase', letterSpacing: '0.1em' }}>No upcoming waves today</p>
+          <div style={{ flex: 1, background: BG, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+            <p style={{ color: MUTED2, fontFamily: 'Barlow Condensed, sans-serif', fontSize: 32, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              {isToday ? 'No upcoming waves' : 'Event not started yet'}
+            </p>
+            {!isToday && (
+              <p style={{ color: MUTED2, fontFamily: 'DM Mono, monospace', fontSize: 16 }}>
+                Event date: {event.date}
+              </p>
+            )}
           </div>
         ) : <>
           {/* NEXT — big panel */}
