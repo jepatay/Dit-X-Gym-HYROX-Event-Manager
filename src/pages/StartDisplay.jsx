@@ -20,7 +20,7 @@ function secondsUntil(scheduledTime) {
   const [h, m] = scheduledTime.split(':').map(Number)
   const target = new Date()
   target.setHours(h, m, 0, 0)
-  return Math.round((target - new Date()) / 1000)
+  return Math.ceil((target - new Date()) / 1000)
 }
 
 function fmtCountdown(secs) {
