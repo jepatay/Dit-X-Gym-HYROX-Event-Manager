@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -35,6 +35,7 @@ export default function StartDisplay() {
   const [teams, setTeams]   = useState([])
   const [, setTick]         = useState(0)
   const [fullscreen, setFullscreen] = useState(false)
+  const audioPlayedRef = useRef(null)
 
   useEffect(() => {
     loadData()
@@ -85,6 +86,16 @@ export default function StartDisplay() {
     .sort(([a], [b]) => a.localeCompare(b))
     .filter(([t]) => secondsUntil(t) > -5)
     .slice(0, 3)
+
+  // Play countdown audio when next wave hits 5 seconds — once per wave
+  if (waves.length > 0) {
+    const [nextWaveTime] = waves[0]
+    const secsToNext = secondsUntil(nextWaveTime)
+    if (secsToNext <= 5 && secsToNext > 0 && audioPlayedRef.current !== nextWaveTime) {
+      audioPlayedRef.current = nextWaveTime
+      new Audio('/countdown.mp3').play().catch(() => {})
+    }
+  }
 
   return (
     <div style={{ background: BG, color: TEXT, width: '100vw', height: '100vh', overflow: 'hidden', fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column' }}>
