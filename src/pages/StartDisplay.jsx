@@ -92,7 +92,7 @@ export default function StartDisplay() {
   if (soundEnabled && waves.length > 0) {
     const [nextWaveTime] = waves[0]
     const secsToNext = secondsUntil(nextWaveTime)
-    if (secsToNext <= 5 && secsToNext > 0 && audioPlayedRef.current !== nextWaveTime) {
+    if (secsToNext <= 6 && secsToNext > 0 && audioPlayedRef.current !== nextWaveTime) {
       audioPlayedRef.current = nextWaveTime
       new Audio('/countdown.mp3').play().catch(() => {})
     }
