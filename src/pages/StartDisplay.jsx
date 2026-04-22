@@ -38,6 +38,7 @@ export default function StartDisplay() {
   const [soundEnabled, setSoundEnabled] = useState(false)
   const audioPlayedRef = useRef(null)
   const audioRef = useRef(null)
+  const audioTimeoutRef = useRef(null)
 
   useEffect(() => {
     audioRef.current = new Audio('/countdown.mp3')
@@ -94,16 +95,22 @@ export default function StartDisplay() {
     .filter(([t]) => secondsUntil(t) > -5)
     .slice(0, 3)
 
-  // Play countdown audio when next wave hits 5 seconds — once per wave
+  // Schedule countdown audio to fire 250ms before the 5-second mark — once per wave
   if (soundEnabled && waves.length > 0) {
     const [nextWaveTime] = waves[0]
     const secsToNext = secondsUntil(nextWaveTime)
-    if (secsToNext <= 5 && secsToNext > 0 && audioPlayedRef.current !== nextWaveTime) {
+    if (secsToNext <= 6 && secsToNext > 0 && audioPlayedRef.current !== nextWaveTime) {
       audioPlayedRef.current = nextWaveTime
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0
-        audioRef.current.play().catch(() => {})
-      }
+      clearTimeout(audioTimeoutRef.current)
+      const [h, m] = nextWaveTime.split(':').map(Number)
+      const target = new Date(); target.setHours(h, m, 0, 0)
+      const delay = Math.max(0, (target - new Date()) - 5000 - 250)
+      audioTimeoutRef.current = setTimeout(() => {
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0
+          audioRef.current.play().catch(() => {})
+        }
+      }, delay)
     }
   }
 
