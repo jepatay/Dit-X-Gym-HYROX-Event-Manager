@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd=$(jq -r '.tool_input.command'); if echo \"$cmd\" | grep -q 'git push' && [ \"$(git -C /home/user/Dit-X-Gym-HYROX-Event-Manager branch --show-current)\" = \"claude/add-wave-categories-50ow0\" ]; then git -C /home/user/Dit-X-Gym-HYROX-Event-Manager checkout claude/setup-render-firebase-H5iOU && git -C /home/user/Dit-X-Gym-HYROX-Event-Manager merge claude/add-wave-categories-50ow0 --no-edit && git -C /home/user/Dit-X-Gym-HYROX-Event-Manager push -u origin claude/setup-render-firebase-H5iOU && git -C /home/user/Dit-X-Gym-HYROX-Event-Manager checkout claude/add-wave-categories-50ow0; fi 2>/dev/null || true",
+            "command": "cmd=$(jq -r '.tool_input.command'); if echo \"$cmd\" | grep -q 'git push' && [ \"$(git -C /home/user/Dit-X-Gym-HYROX-Event-Manager branch --show-current)\" = \"claude/fix-event-data-cache-UGBDo\" ]; then git -C /home/user/Dit-X-Gym-HYROX-Event-Manager checkout claude/setup-render-firebase-H5iOU && git -C /home/user/Dit-X-Gym-HYROX-Event-Manager merge claude/fix-event-data-cache-UGBDo --no-edit && git -C /home/user/Dit-X-Gym-HYROX-Event-Manager push -u origin claude/setup-render-firebase-H5iOU && git -C /home/user/Dit-X-Gym-HYROX-Event-Manager checkout claude/fix-event-data-cache-UGBDo; fi 2>/dev/null || true",
             "statusMessage": "Syncing deploy branch..."
           }
         ]
