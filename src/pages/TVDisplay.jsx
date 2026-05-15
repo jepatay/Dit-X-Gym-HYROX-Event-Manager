@@ -85,7 +85,10 @@ export default function TVDisplay() {
   const now = `${String(time.getHours()).padStart(2,'0')}:${String(time.getMinutes()).padStart(2,'0')}`
   const isToday = event.date === new Date().toISOString().slice(0, 10)
 
-  const allSorted = [...teams].sort((a, b) =>
+  const validWaveIds = new Set((event.waves || []).map(w => w.id))
+  const validTeams = teams.filter(t => validWaveIds.has(t.waveId))
+
+  const allSorted = [...validTeams].sort((a, b) =>
     (a.scheduledTime || '').localeCompare(b.scheduledTime || '') || (a.ref || '').localeCompare(b.ref || '') || (a.bibNumber || 0) - (b.bibNumber || 0)
   )
   let nextAthletes
@@ -96,7 +99,7 @@ export default function TVDisplay() {
     nextAthletes = allSorted.slice(0, 10)
   }
 
-  const finishedTeams = teams.filter(t => t.finishTimeSeconds != null)
+  const finishedTeams = validTeams.filter(t => t.finishTimeSeconds != null)
   const leaderboardByCat = []
   if (config?.categories) {
     for (const cat of config.categories) {

@@ -276,6 +276,27 @@ function TeamsTab({ eventId, waves, config }) {
           Add waves in the Waves tab first, then return here to add athletes.
         </p>
       )}
+      {(() => {
+        const validWaveIds = new Set(activeWaves.map(w => w.id))
+        const orphaned = teams.filter(t => !validWaveIds.has(t.waveId))
+        if (orphaned.length === 0) return null
+        return (
+          <div style={{ marginBottom: 32, padding: 16, border: '1px solid var(--color-accent)', background: 'rgba(239,68,68,0.06)' }}>
+            <h3 style={{ fontSize: 14, color: 'var(--color-accent)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+              Orphaned Teams ({orphaned.length}) — wave was deleted or not saved
+            </h3>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {orphaned.map(team => (
+                <div key={team.id} style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', fontWeight: 700, fontSize: 13 }}>{team.ref || `#${team.bibNumber}`}</span>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{team.name}</span>
+                  <button onClick={() => deleteTeam(team.id)} style={{ background: 'transparent', border: 'none', color: 'var(--color-accent)', cursor: 'pointer', fontSize: 13, padding: 0, lineHeight: 1 }}>✕ Delete</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
       {activeWaves.map(wave => {
         const waveTeams = teams.filter(t => t.waveId === wave.id).sort((a, b) => (a.ref || '').localeCompare(b.ref || '') || a.bibNumber - b.bibNumber)
         const starts = wave.teamCount || 0
