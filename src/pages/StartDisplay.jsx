@@ -96,9 +96,10 @@ export default function StartDisplay() {
   const clockStr = new Date().toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   const isToday = event.date === new Date().toISOString().slice(0, 10)
 
-  // Group teams into waves by scheduledTime
+  // Group teams into waves by scheduledTime — only teams assigned to a saved wave
+  const validWaveIds = new Set((event.waves || []).map(w => w.id))
   const waveMap = {}
-  for (const team of teams) {
+  for (const team of teams.filter(t => validWaveIds.has(t.waveId))) {
     if (!team.scheduledTime) continue
     if (!waveMap[team.scheduledTime]) waveMap[team.scheduledTime] = []
     waveMap[team.scheduledTime].push(team)
