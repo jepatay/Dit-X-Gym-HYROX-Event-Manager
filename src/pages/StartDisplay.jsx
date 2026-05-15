@@ -171,7 +171,7 @@ export default function StartDisplay() {
 
           {/* Wave 2 + 3 — compact row below */}
           {waves.length > 1 && (
-            <div style={{ display: 'flex', gap: 2, height: 185, flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: 2, height: Math.max(185, Math.max(waves[1]?.[1]?.length || 0, waves[2]?.[1]?.length || 0) * 42 + 64), flexShrink: 0 }}>
               <SmallPanel wave={waves[1]} label="GET READY" eventWaves={event.waves || []} />
               {waves[2]
                 ? <SmallPanel wave={waves[2]} label="UP NEXT" eventWaves={event.waves || []} />
@@ -239,31 +239,42 @@ function NextPanel({ wave, eventWaves }) {
       </div>
 
       {/* Divider */}
-      <div style={{ borderBottom: `2px solid ${ACCENT}`, marginBottom: 20, flexShrink: 0 }} />
+      <div style={{ borderBottom: `2px solid ${ACCENT}`, marginBottom: sorted.length >= 4 ? 12 : 20, flexShrink: 0 }} />
 
-      {/* Athletes */}
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {sorted.map(team => (
-          <div key={team.id} style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 26, color: ACCENT, width: 72, flexShrink: 0 }}>{team.ref || team.bibNumber}</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 800, fontSize: 36, lineHeight: 1.05, textTransform: 'uppercase', letterSpacing: '0.02em' }}>{team.name}</div>
-              {team.competitionName && (
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 1 }}>{team.competitionName}</div>
-              )}
-              <div style={{ fontSize: 15, color: MUTED, marginTop: 1 }}>
-                {team.athlete1?.firstName} {team.athlete1?.lastName}
-                {team.athlete2?.firstName && ` · ${team.athlete2.firstName} ${team.athlete2.lastName}`}
+      {/* Athletes — font/gap scale down when 4+ athletes */}
+      {(() => {
+        const n = sorted.length
+        const nameSz  = n >= 4 ? 28 : 36
+        const subSz   = n >= 4 ? 13 : 15
+        const compSz  = n >= 4 ? 13 : 16
+        const rowGap  = n >= 4 ? 8  : 14
+        const refW    = n >= 4 ? 62 : 72
+        const badgeSz = n >= 4 ? 18 : 22
+        return (
+          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: rowGap }}>
+            {sorted.map(team => (
+              <div key={team.id} style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+                <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: n >= 4 ? 22 : 26, color: ACCENT, width: refW, flexShrink: 0 }}>{team.ref || team.bibNumber}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 800, fontSize: nameSz, lineHeight: 1.05, textTransform: 'uppercase', letterSpacing: '0.02em' }}>{team.name}</div>
+                  {team.competitionName && (
+                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: compSz, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 1 }}>{team.competitionName}</div>
+                  )}
+                  <div style={{ fontSize: subSz, color: MUTED, marginTop: 1 }}>
+                    {team.athlete1?.firstName} {team.athlete1?.lastName}
+                    {team.athlete2?.firstName && ` · ${team.athlete2.firstName} ${team.athlete2.lastName}`}
+                  </div>
+                </div>
+                <div style={{ flexShrink: 0 }}>
+                  {team.checkedIn
+                    ? <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: badgeSz, color: SUCCESS, letterSpacing: '0.06em' }}>✓ CHECKED IN</span>
+                    : <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: badgeSz, color: MUTED2, letterSpacing: '0.06em' }}>PENDING</span>}
+                </div>
               </div>
-            </div>
-            <div style={{ flexShrink: 0 }}>
-              {team.checkedIn
-                ? <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: 22, color: SUCCESS, letterSpacing: '0.06em' }}>✓ CHECKED IN</span>
-                : <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: 22, color: MUTED2, letterSpacing: '0.06em' }}>PENDING</span>}
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
+        )
+      })()}
     </div>
   )
 }
@@ -288,22 +299,31 @@ function SmallPanel({ wave, label, eventWaves }) {
           in {fmtCountdown(Math.max(0, secs))}
         </span>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 7, overflow: 'hidden' }}>
-        {sorted.map(team => (
-          <div key={team.id} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 15, color: ACCENT, width: 56, flexShrink: 0 }}>{team.ref || team.bibNumber}</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: 19, textTransform: 'uppercase', display: 'block', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{team.name}</span>
-              {team.competitionName && (
-                <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 12, color: ACCENT, textTransform: 'uppercase' }}>{team.competitionName}</span>
-              )}
-            </div>
-            {team.checkedIn
-              ? <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 12, fontWeight: 700, color: SUCCESS, flexShrink: 0 }}>✓ IN</span>
-              : <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 12, fontWeight: 700, color: MUTED2, flexShrink: 0 }}>PENDING</span>}
+      {(() => {
+        const n = sorted.length
+        const nameSz = n >= 4 ? 15 : 19
+        const compSz = n >= 4 ? 10 : 12
+        const rowGap = n >= 4 ? 4  : 7
+        const refW   = n >= 4 ? 48 : 56
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: rowGap, overflow: 'hidden' }}>
+            {sorted.map(team => (
+              <div key={team.id} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: n >= 4 ? 13 : 15, color: ACCENT, width: refW, flexShrink: 0 }}>{team.ref || team.bibNumber}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: nameSz, textTransform: 'uppercase', display: 'block', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{team.name}</span>
+                  {team.competitionName && (
+                    <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: compSz, color: ACCENT, textTransform: 'uppercase' }}>{team.competitionName}</span>
+                  )}
+                </div>
+                {team.checkedIn
+                  ? <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: n >= 4 ? 11 : 12, fontWeight: 700, color: SUCCESS, flexShrink: 0 }}>✓ IN</span>
+                  : <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: n >= 4 ? 11 : 12, fontWeight: 700, color: MUTED2, flexShrink: 0 }}>PENDING</span>}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        )
+      })()}
     </div>
   )
 }
