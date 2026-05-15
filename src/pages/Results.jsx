@@ -86,12 +86,12 @@ export default function Results() {
   function sortTeams(list) {
     return [...list].sort((a, b) => {
       let v = 0
-      if (sortCol === 'bib') v = (a.bibNumber || 0) - (b.bibNumber || 0)
+      if (sortCol === 'bib') v = (a.ref || String(a.bibNumber || 0)).localeCompare(b.ref || String(b.bibNumber || 0))
       else if (sortCol === 'rank') {
         if (a.rank && b.rank) v = a.rank - b.rank
         else if (a.rank) v = -1
         else if (b.rank) v = 1
-        else v = (a.bibNumber || 0) - (b.bibNumber || 0)
+        else v = (a.ref || String(a.bibNumber || 0)).localeCompare(b.ref || String(b.bibNumber || 0))
       } else if (sortCol === 'name') v = (a.name || '').localeCompare(b.name || '')
       else if (sortCol === 'time') {
         if (a.finishTimeSeconds != null && b.finishTimeSeconds != null) v = a.finishTimeSeconds - b.finishTimeSeconds
@@ -139,7 +139,7 @@ export default function Results() {
                 <thead>
                   <tr>
                     {hasAnyResult && <SortHeader col="rank" style={{ width: 50 }}>Rank</SortHeader>}
-                    <SortHeader col="bib">Bib</SortHeader>
+                    <SortHeader col="bib">Ref</SortHeader>
                     <SortHeader col="name">Name</SortHeader>
                     <th>Athlete(s)</th>
                     <SortHeader col="time">Finish Time (HH:MM:SS)</SortHeader>
@@ -154,7 +154,7 @@ export default function Results() {
                           {team.rank ? `#${team.rank}` : '—'}
                         </td>
                       )}
-                      <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', fontWeight: 500 }}>{team.bibNumber}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', fontWeight: 500 }}>{team.ref || team.bibNumber}</td>
                       <td style={{ fontWeight: 600 }}>{team.name}</td>
                       <td style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
                         {team.athlete1?.firstName} {team.athlete1?.lastName}
