@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { collection, onSnapshot, query, where, doc } from 'firebase/firestore'
+import { collection, onSnapshot, query, where, doc, getDocFromServer, getDocsFromServer } from 'firebase/firestore'
 import { QRCodeSVG } from 'qrcode.react'
 import { db } from '../firebase'
 import { secondsToHHMMSS } from '../utils/timeUtils'
@@ -29,17 +29,37 @@ export default function TVDisplay() {
   const [lastUpdated, setLastUpdated] = useState(null)
 
   useEffect(() => {
+    // Force fresh server data on initial load — bypasses IndexedDB cache
+    async function freshLoad() {
+      try {
+        const teamsQuery = query(collection(db, 'teams'), where('eventId', '==', id))
+        const [evSnap, teamsSnap, configSnap] = await Promise.all([
+          getDocFromServer(doc(db, 'events', id)),
+          getDocsFromServer(teamsQuery),
+          getDocFromServer(doc(db, 'config', 'main')),
+        ])
+        if (evSnap.exists()) { setEvent(evSnap.data()); setLastUpdated(new Date()) }
+        setTeams(teamsSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+        if (configSnap.exists()) setConfig(configSnap.data())
+      } catch (_) {}
+    }
+    freshLoad()
+
+    // Real-time listener for ongoing updates after initial load
     const unsubs = [
-      onSnapshot(doc(db, 'events', id), snap => {
-        if (snap.exists()) { setEvent(snap.data()); setLastUpdated(new Date()) }
-      }),
+      onSnapshot(doc(db, 'events', id),
+        snap => { if (snap.exists() && !snap.metadata.fromCache) { setEvent(snap.data()); setLastUpdated(new Date()) } },
+        () => {},
+      ),
       onSnapshot(
         query(collection(db, 'teams'), where('eventId', '==', id)),
-        snap => setTeams(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+        snap => { if (!snap.metadata.fromCache) setTeams(snap.docs.map(d => ({ id: d.id, ...d.data() }))) },
+        () => {},
       ),
-      onSnapshot(doc(db, 'config', 'main'), snap => {
-        if (snap.exists()) setConfig(snap.data())
-      }),
+      onSnapshot(doc(db, 'config', 'main'),
+        snap => { if (snap.exists() && !snap.metadata.fromCache) setConfig(snap.data()) },
+        () => {},
+      ),
     ]
     const clock = setInterval(() => setTime(new Date()), 1000)
     return () => { unsubs.forEach(u => u()); clearInterval(clock) }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { collection, onSnapshot, query, where, doc } from 'firebase/firestore'
+import { collection, onSnapshot, query, where, doc, getDocFromServer, getDocsFromServer } from 'firebase/firestore'
 import { db } from '../firebase'
 
 const BG      = '#0f1923'
@@ -46,13 +46,30 @@ export default function StartDisplay() {
   }, [])
 
   useEffect(() => {
+    // Force fresh server data on initial load — bypasses IndexedDB cache
+    async function freshLoad() {
+      try {
+        const teamsQuery = query(collection(db, 'teams'), where('eventId', '==', id))
+        const [evSnap, teamsSnap] = await Promise.all([
+          getDocFromServer(doc(db, 'events', id)),
+          getDocsFromServer(teamsQuery),
+        ])
+        if (evSnap.exists()) setEvent(evSnap.data())
+        setTeams(teamsSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+      } catch (_) {}
+    }
+    freshLoad()
+
+    // Real-time listener for ongoing updates after initial load
     const unsubs = [
-      onSnapshot(doc(db, 'events', id), snap => {
-        if (snap.exists()) setEvent(snap.data())
-      }),
+      onSnapshot(doc(db, 'events', id),
+        snap => { if (snap.exists() && !snap.metadata.fromCache) setEvent(snap.data()) },
+        () => {},
+      ),
       onSnapshot(
         query(collection(db, 'teams'), where('eventId', '==', id)),
-        snap => setTeams(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+        snap => { if (!snap.metadata.fromCache) setTeams(snap.docs.map(d => ({ id: d.id, ...d.data() }))) },
+        () => {},
       ),
     ]
     const clock = setInterval(() => setTick(t => t + 1), 1000)
