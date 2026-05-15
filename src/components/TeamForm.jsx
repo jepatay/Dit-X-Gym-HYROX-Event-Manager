@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { collection, addDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { generateRef } from '../utils/bibUtils'
@@ -18,9 +18,11 @@ export default function TeamForm({ wave, eventId, laneIndex = 0, teams, config, 
   const [a2Last, setA2Last] = useState('')
   const [a2Email, setA2Email] = useState('')
   const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
 
   async function handleSave() {
-    if (!name.trim()) return
+    if (!name.trim() || savingRef.current) return
+    savingRef.current = true
     setSaving(true)
     try {
       const hasAthlete2 = !!(a2First || a2Last)
@@ -45,6 +47,7 @@ export default function TeamForm({ wave, eventId, laneIndex = 0, teams, config, 
       const docRef = await addDoc(collection(db, 'teams'), data)
       onSaved({ id: docRef.id, ...data })
     } finally {
+      savingRef.current = false
       setSaving(false)
     }
   }
