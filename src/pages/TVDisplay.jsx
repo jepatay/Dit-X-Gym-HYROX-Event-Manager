@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore'
+import { collection, onSnapshot, query, where, doc } from 'firebase/firestore'
 import { QRCodeSVG } from 'qrcode.react'
 import { db } from '../firebase'
 import { secondsToHHMMSS } from '../utils/timeUtils'
@@ -29,10 +29,20 @@ export default function TVDisplay() {
   const [lastUpdated, setLastUpdated] = useState(null)
 
   useEffect(() => {
-    loadData()
-    const data  = setInterval(loadData, 30000)
+    const unsubs = [
+      onSnapshot(doc(db, 'events', id), snap => {
+        if (snap.exists()) { setEvent(snap.data()); setLastUpdated(new Date()) }
+      }),
+      onSnapshot(
+        query(collection(db, 'teams'), where('eventId', '==', id)),
+        snap => setTeams(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      ),
+      onSnapshot(doc(db, 'config', 'main'), snap => {
+        if (snap.exists()) setConfig(snap.data())
+      }),
+    ]
     const clock = setInterval(() => setTime(new Date()), 1000)
-    return () => { clearInterval(data); clearInterval(clock) }
+    return () => { unsubs.forEach(u => u()); clearInterval(clock) }
   }, [id])
 
   useEffect(() => {
@@ -40,20 +50,6 @@ export default function TVDisplay() {
     document.addEventListener('fullscreenchange', handler)
     return () => document.removeEventListener('fullscreenchange', handler)
   }, [])
-
-  async function loadData() {
-    try {
-      const [evSnap, teamsSnap, configSnap] = await Promise.all([
-        getDoc(doc(db, 'events', id)),
-        getDocs(query(collection(db, 'teams'), where('eventId', '==', id))),
-        getDoc(doc(db, 'config', 'main')),
-      ])
-      if (evSnap.exists()) setEvent(evSnap.data())
-      setTeams(teamsSnap.docs.map(d => ({ id: d.id, ...d.data() })))
-      if (configSnap.exists()) setConfig(configSnap.data())
-      setLastUpdated(new Date())
-    } catch (_) {}
-  }
 
   function toggleFullscreen() {
     if (!document.fullscreenElement) document.documentElement.requestFullscreen()
@@ -70,7 +66,7 @@ export default function TVDisplay() {
   const isToday = event.date === new Date().toISOString().slice(0, 10)
 
   const allSorted = [...teams].sort((a, b) =>
-    (a.scheduledTime || '').localeCompare(b.scheduledTime || '') || (a.bibNumber || 0) - (b.bibNumber || 0)
+    (a.scheduledTime || '').localeCompare(b.scheduledTime || '') || (a.ref || '').localeCompare(b.ref || '') || (a.bibNumber || 0) - (b.bibNumber || 0)
   )
   let nextAthletes
   if (isToday) {
@@ -124,18 +120,21 @@ export default function TVDisplay() {
             <Empty>No upcoming starts</Empty>
           ) : <>
             <Row header>
-              <Cell w={48} muted>Bib</Cell>
-              <Cell w={52} muted>Time</Cell>
-              <Cell flex muted>Athlete</Cell>
+              <Cell w={56} muted>Ref</Cell>
+              <Cell w={48} muted>Time</Cell>
+              <Cell flex muted>Team</Cell>
               <Cell w={80} muted right>Status</Cell>
             </Row>
             {nextAthletes.map(team => (
               <Row key={team.id}>
-                <Cell w={48} accent mono bold size={17}>{team.bibNumber}</Cell>
-                <Cell w={52} muted mono size={13}>{team.scheduledTime}</Cell>
+                <Cell w={56} accent mono bold size={14}>{team.ref || team.bibNumber}</Cell>
+                <Cell w={48} muted mono size={12}>{team.scheduledTime}</Cell>
                 <Cell flex>
-                  <div style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.2 }}>{team.name}</div>
-                  <div style={{ fontSize: 11, color: MUTED2, marginTop: 2 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{team.name}</div>
+                  {team.competitionName && (
+                    <div style={{ fontSize: 10, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{team.competitionName}</div>
+                  )}
+                  <div style={{ fontSize: 11, color: MUTED2, marginTop: 1 }}>
                     {team.athlete1?.firstName} {team.athlete1?.lastName}
                     {team.athlete2?.firstName && ` / ${team.athlete2.firstName}`}
                   </div>
@@ -164,7 +163,7 @@ export default function TVDisplay() {
                   {top3.map((team, idx) => (
                     <Row key={team.id} tight>
                       <Cell w={18} bold size={13} style={{ color: [GOLD, SILVER, BRONZE][idx] }}>{idx + 1}</Cell>
-                      <Cell w={34} accent mono bold size={12}>{team.bibNumber}</Cell>
+                      <Cell w={44} accent mono bold size={11}>{team.ref || team.bibNumber}</Cell>
                       <Cell flex size={12} bold={idx === 0}>{team.name}</Cell>
                       <Cell w={68} mono bold size={11} accent right>{secondsToHHMMSS(team.finishTimeSeconds)}</Cell>
                     </Row>
@@ -207,9 +206,9 @@ export default function TVDisplay() {
         </div>
       </div>
 
-      {/* ── Refresh timestamp ── */}
+      {/* ── Live indicator ── */}
       <div style={{ position: 'fixed', bottom: 8, right: 14, fontSize: 10, color: BORDER, fontFamily: 'DM Mono, monospace', pointerEvents: 'none' }}>
-        {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} · auto-refresh 30s` : ''}
+        {lastUpdated ? `Live · updated ${lastUpdated.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}
       </div>
     </div>
   )

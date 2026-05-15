@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore'
+import { collection, onSnapshot, query, where, doc } from 'firebase/firestore'
 import { db } from '../firebase'
 
 const BG      = '#0f1923'
@@ -46,10 +46,17 @@ export default function StartDisplay() {
   }, [])
 
   useEffect(() => {
-    loadData()
-    const data  = setInterval(loadData, 30000)
+    const unsubs = [
+      onSnapshot(doc(db, 'events', id), snap => {
+        if (snap.exists()) setEvent(snap.data())
+      }),
+      onSnapshot(
+        query(collection(db, 'teams'), where('eventId', '==', id)),
+        snap => setTeams(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      ),
+    ]
     const clock = setInterval(() => setTick(t => t + 1), 1000)
-    return () => { clearInterval(data); clearInterval(clock) }
+    return () => { unsubs.forEach(u => u()); clearInterval(clock) }
   }, [id])
 
   useEffect(() => {
@@ -57,17 +64,6 @@ export default function StartDisplay() {
     document.addEventListener('fullscreenchange', handler)
     return () => document.removeEventListener('fullscreenchange', handler)
   }, [])
-
-  async function loadData() {
-    try {
-      const [evSnap, teamsSnap] = await Promise.all([
-        getDoc(doc(db, 'events', id)),
-        getDocs(query(collection(db, 'teams'), where('eventId', '==', id))),
-      ])
-      if (evSnap.exists()) setEvent(evSnap.data())
-      setTeams(teamsSnap.docs.map(d => ({ id: d.id, ...d.data() })))
-    } catch (_) {}
-  }
 
   function toggleFullscreen() {
     if (!document.fullscreenElement) document.documentElement.requestFullscreen()
@@ -154,14 +150,14 @@ export default function StartDisplay() {
           </div>
         ) : <>
           {/* NEXT — big panel */}
-          <NextPanel wave={waves[0]} />
+          <NextPanel wave={waves[0]} eventWaves={event.waves || []} />
 
           {/* Wave 2 + 3 — compact row below */}
           {waves.length > 1 && (
             <div style={{ display: 'flex', gap: 2, height: 185, flexShrink: 0 }}>
-              <SmallPanel wave={waves[1]} label="GET READY" />
+              <SmallPanel wave={waves[1]} label="GET READY" eventWaves={event.waves || []} />
               {waves[2]
-                ? <SmallPanel wave={waves[2]} label="UP NEXT" />
+                ? <SmallPanel wave={waves[2]} label="UP NEXT" eventWaves={event.waves || []} />
                 : <div style={{ flex: 1, background: BG }} />}
             </div>
           )}
@@ -171,7 +167,7 @@ export default function StartDisplay() {
   )
 }
 
-function NextPanel({ wave }) {
+function NextPanel({ wave, eventWaves }) {
   const [scheduledTime, athletes] = wave
   const secs = secondsUntil(scheduledTime)
   const isGo = secs <= 0
@@ -185,16 +181,23 @@ function NextPanel({ wave }) {
   const countdownText = isGo ? 'GO!' : fmtCountdown(secs)
   const countdownSize = isLastMinute || isGo ? 140 : 88
 
-  const sorted = [...athletes].sort((a, b) => (a.bibNumber || 0) - (b.bibNumber || 0))
+  const sorted = [...athletes].sort((a, b) => (a.ref || '').localeCompare(b.ref || '') || (a.bibNumber || 0) - (b.bibNumber || 0))
+
+  // Find wave label/name from event waves
+  const matchingWave = eventWaves.find(w => w.startTime === scheduledTime)
+  const waveTitle = matchingWave ? (matchingWave.name ? `${matchingWave.label} — ${matchingWave.name}` : matchingWave.label) : null
 
   return (
     <div style={{ flex: 1, background: BG, display: 'flex', flexDirection: 'column', padding: '22px 40px', overflow: 'hidden', minHeight: 0 }}>
 
       {/* Top bar: NEXT label + wave time + countdown */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 22 }}>
           <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 900, fontSize: 18, textTransform: 'uppercase', letterSpacing: '0.14em', color: ACCENT, border: `2px solid ${ACCENT}`, padding: '2px 10px' }}>NEXT</span>
           <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 800, fontSize: 60, color: TEXT, lineHeight: 1, letterSpacing: '-0.01em' }}>{scheduledTime}</span>
+          {waveTitle && (
+            <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 20, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{waveTitle}</span>
+          )}
         </div>
 
         {/* Countdown */}
@@ -225,9 +228,12 @@ function NextPanel({ wave }) {
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 14 }}>
         {sorted.map(team => (
           <div key={team.id} style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 26, color: ACCENT, width: 56, flexShrink: 0 }}>{team.bibNumber}</span>
+            <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 26, color: ACCENT, width: 72, flexShrink: 0 }}>{team.ref || team.bibNumber}</span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 800, fontSize: 36, lineHeight: 1.05, textTransform: 'uppercase', letterSpacing: '0.02em' }}>{team.name}</div>
+              {team.competitionName && (
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 1 }}>{team.competitionName}</div>
+              )}
               <div style={{ fontSize: 15, color: MUTED, marginTop: 1 }}>
                 {team.athlete1?.firstName} {team.athlete1?.lastName}
                 {team.athlete2?.firstName && ` · ${team.athlete2.firstName} ${team.athlete2.lastName}`}
@@ -245,10 +251,13 @@ function NextPanel({ wave }) {
   )
 }
 
-function SmallPanel({ wave, label }) {
+function SmallPanel({ wave, label, eventWaves }) {
   const [scheduledTime, athletes] = wave
   const secs = secondsUntil(scheduledTime)
-  const sorted = [...athletes].sort((a, b) => (a.bibNumber || 0) - (b.bibNumber || 0))
+  const sorted = [...athletes].sort((a, b) => (a.ref || '').localeCompare(b.ref || '') || (a.bibNumber || 0) - (b.bibNumber || 0))
+
+  const matchingWave = eventWaves.find(w => w.startTime === scheduledTime)
+  const waveLabel = matchingWave?.name || matchingWave?.label || null
 
   return (
     <div style={{ flex: 1, background: SURFACE, padding: '14px 28px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -256,6 +265,7 @@ function SmallPanel({ wave, label }) {
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
           <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 800, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.12em', color: MUTED }}>{label}</span>
           <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 800, fontSize: 30, color: TEXT }}>{scheduledTime}</span>
+          {waveLabel && <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 14, color: MUTED2, textTransform: 'uppercase' }}>{waveLabel}</span>}
         </div>
         <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, color: MUTED2 }}>
           in {fmtCountdown(Math.max(0, secs))}
@@ -264,8 +274,13 @@ function SmallPanel({ wave, label }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 7, overflow: 'hidden' }}>
         {sorted.map(team => (
           <div key={team.id} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 15, color: ACCENT, width: 38, flexShrink: 0 }}>{team.bibNumber}</span>
-            <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: 19, textTransform: 'uppercase', flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{team.name}</span>
+            <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 15, color: ACCENT, width: 56, flexShrink: 0 }}>{team.ref || team.bibNumber}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: 19, textTransform: 'uppercase', display: 'block', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{team.name}</span>
+              {team.competitionName && (
+                <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 12, color: ACCENT, textTransform: 'uppercase' }}>{team.competitionName}</span>
+              )}
+            </div>
             {team.checkedIn
               ? <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 12, fontWeight: 700, color: SUCCESS, flexShrink: 0 }}>✓ IN</span>
               : <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 12, fontWeight: 700, color: MUTED2, flexShrink: 0 }}>PENDING</span>}

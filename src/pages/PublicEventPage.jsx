@@ -217,14 +217,17 @@ export default function PublicEventPage() {
                 </div>
                 {waveTeams.map(team => (
                   <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', borderBottom: `1px solid ${BORDER2}`, gap: 12 }}>
-                    <span style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 16, minWidth: 40 }}>{team.bibNumber}</span>
-                    <span style={{ fontFamily: 'DM Mono, monospace', color: MUTED, fontSize: 13, minWidth: 44 }}>{team.scheduledTime}</span>
+                    <span style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 16, minWidth: 48 }}>{team.ref || team.bibNumber}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 15, color: TEXT }}>{team.name}</div>
+                      {team.competitionName && (
+                        <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>{team.competitionName}</div>
+                      )}
                       <div style={{ fontSize: 12, color: MUTED2, marginTop: 2 }}>
                         {team.athlete1?.firstName} {team.athlete1?.lastName}
                         {team.athlete2?.firstName && <> / {team.athlete2.firstName} {team.athlete2.lastName}</>}
                       </div>
+                      <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: MUTED2, marginTop: 2 }}>{team.scheduledTime}</div>
                     </div>
                     {team.checkedIn ? (
                       <span style={{

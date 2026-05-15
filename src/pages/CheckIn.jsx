@@ -73,8 +73,10 @@ export default function CheckIn() {
     if (search.trim()) {
       const q = search.toLowerCase()
       filtered = filtered.filter(t =>
+        (t.ref || '').toLowerCase().includes(q) ||
         String(t.bibNumber).includes(q) ||
         (t.name || '').toLowerCase().includes(q) ||
+        (t.competitionName || '').toLowerCase().includes(q) ||
         (t.athlete1?.firstName || '').toLowerCase().includes(q) ||
         (t.athlete1?.lastName || '').toLowerCase().includes(q) ||
         (t.athlete2?.firstName || '').toLowerCase().includes(q) ||
@@ -150,7 +152,7 @@ export default function CheckIn() {
 
         {/* Wave sections */}
         {waves.map(wave => {
-          const waveTeams = applyFilter(teams.filter(t => t.waveId === wave.id).sort((a, b) => a.bibNumber - b.bibNumber))
+          const waveTeams = applyFilter(teams.filter(t => t.waveId === wave.id).sort((a, b) => (a.ref || '').localeCompare(b.ref || '') || a.bibNumber - b.bibNumber))
           if (waveTeams.length === 0) return null
           return (
             <div key={wave.id} style={{ marginBottom: 28 }}>
@@ -167,13 +169,16 @@ export default function CheckIn() {
                     alignItems: 'center',
                     gap: 14,
                   }}>
-                    {/* Bib */}
-                    <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', fontWeight: 700, fontSize: 22, minWidth: 44, lineHeight: 1 }}>
-                      {team.bibNumber}
+                    {/* Ref */}
+                    <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', fontWeight: 700, fontSize: 18, minWidth: 52, lineHeight: 1 }}>
+                      {team.ref || team.bibNumber}
                     </div>
                     {/* Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{team.name}</div>
+                      {team.competitionName && (
+                        <div style={{ fontSize: 11, color: 'var(--color-accent)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 2 }}>{team.competitionName}</div>
+                      )}
                       <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {team.athlete1?.firstName} {team.athlete1?.lastName}
                         {team.athlete2?.firstName && ` / ${team.athlete2.firstName} ${team.athlete2.lastName}`}

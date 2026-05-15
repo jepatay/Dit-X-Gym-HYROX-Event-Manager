@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDocFromServer, getDoc } from 'firebase/firestore'
 import { QRCodeSVG } from 'qrcode.react'
 import { db } from '../firebase'
 import EventNav from '../components/EventNav'
@@ -11,10 +11,12 @@ export default function QRPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getDoc(doc(db, 'events', id)).then(snap => {
-      if (snap.exists()) setEvent(snap.data())
-      setLoading(false)
-    })
+    getDocFromServer(doc(db, 'events', id))
+      .catch(() => getDoc(doc(db, 'events', id)))
+      .then(snap => {
+        if (snap.exists()) setEvent(snap.data())
+        setLoading(false)
+      })
   }, [id])
 
   const baseUrl = import.meta.env.VITE_PUBLIC_BASE_URL || window.location.origin

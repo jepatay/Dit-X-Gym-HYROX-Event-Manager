@@ -34,6 +34,7 @@ export default function WaveBuilder({ waves, setWaves, config, eventType, onSave
   const [conflict, setConflict] = useState(null)
 
   const [aLabel, setALabel] = useState('')
+  const [aName, setAName] = useState('')
   const [aCategoryId, setACategoryId] = useState(config?.categories?.[0]?.id || '')
   const [aStart, setAStart] = useState(getDefaultStart(waves))
   const [aInterval, setAInterval] = useState(5)
@@ -55,6 +56,7 @@ export default function WaveBuilder({ waves, setWaves, config, eventType, onSave
     const wave = {
       id: newId(),
       label: aLabel || `Wave ${waves.filter(w => !w.isRestWave).length + 1}`,
+      name: aName || '',
       categoryId: aCategoryId,
       startTime: aStart,
       intervalMinutes: Number(aInterval),
@@ -70,6 +72,7 @@ export default function WaveBuilder({ waves, setWaves, config, eventType, onSave
     setWaves(next)
     setShowActiveForm(false)
     setALabel('')
+    setAName('')
     setALanes(2)
     setAStart(getDefaultStart(next))
   }
@@ -205,9 +208,12 @@ export default function WaveBuilder({ waves, setWaves, config, eventType, onSave
                   <button onClick={() => moveDown(index)} style={arrowBtn} disabled={index === waves.length - 1}>▼</button>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--color-text-muted)', minWidth: 44 }}>{wave.startTime}</span>
                     <span style={{ fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700 }}>{wave.label}</span>
+                    {wave.name && (
+                      <span style={{ fontSize: 13, color: 'var(--color-text)', fontStyle: 'italic' }}>"{wave.name}"</span>
+                    )}
                     {wave.isRestWave ? (
                       <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase' }}>
                         {wave.durationMinutes}min pause
@@ -261,6 +267,10 @@ export default function WaveBuilder({ waves, setWaves, config, eventType, onSave
             <div>
               <FieldLabel>Label</FieldLabel>
               <input value={aLabel} onChange={e => setALabel(e.target.value)} placeholder="Wave 1" style={inputStyle} />
+            </div>
+            <div>
+              <FieldLabel>Display Name</FieldLabel>
+              <input value={aName} onChange={e => setAName(e.target.value)} placeholder="e.g. Half Hyrox Mixed" style={inputStyle} />
             </div>
             <div>
               <FieldLabel>Category</FieldLabel>
@@ -332,6 +342,12 @@ function WaveEditForm({ wave, categories, onChange, onClose }) {
           <FieldLabel>Label</FieldLabel>
           <input value={wave.label} onChange={e => onChange('label', e.target.value)} style={inputStyle} />
         </div>
+        {!wave.isRestWave && (
+          <div>
+            <FieldLabel>Display Name</FieldLabel>
+            <input value={wave.name || ''} onChange={e => onChange('name', e.target.value)} placeholder="e.g. Half Hyrox Mixed" style={inputStyle} />
+          </div>
+        )}
         <div>
           <FieldLabel>Start Time</FieldLabel>
           <input value={wave.startTime} onChange={e => onChange('startTime', e.target.value)} style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }} />

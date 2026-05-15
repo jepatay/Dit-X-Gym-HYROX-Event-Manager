@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import { collection, addDoc } from 'firebase/firestore'
 import { db } from '../firebase'
-import { nextBibNumber } from '../utils/bibUtils'
+import { generateRef } from '../utils/bibUtils'
 import { slotTime } from '../utils/timeUtils'
 
-export default function TeamForm({ wave, eventId, isDouble, teams, config, onSaved, onCancel, forcedTime }) {
-  const bib = nextBibNumber(teams)
-  const slotIndex = teams.filter(t => t.waveId === wave.id).length
-  const defaultTime = forcedTime || slotTime(wave.startTime || '00:00', slotIndex, wave.intervalMinutes || 5)
+export default function TeamForm({ wave, eventId, laneIndex = 0, teams, config, onSaved, onCancel, forcedTime }) {
+  const ref = generateRef(forcedTime || slotTime(wave.startTime || '00:00', 0, wave.intervalMinutes || 5), laneIndex)
+  const defaultTime = forcedTime || slotTime(wave.startTime || '00:00', (teams || []).filter(t => t.waveId === wave.id).length, wave.intervalMinutes || 5)
 
   const [name, setName] = useState('')
   const [scheduledTime, setScheduledTime] = useState(defaultTime)
+  const [competitionName, setCompetitionName] = useState('')
   const [a1First, setA1First] = useState('')
   const [a1Last, setA1Last] = useState('')
   const [a1Email, setA1Email] = useState('')
@@ -23,12 +23,14 @@ export default function TeamForm({ wave, eventId, isDouble, teams, config, onSav
     if (!name.trim()) return
     setSaving(true)
     try {
+      const hasAthlete2 = !!(a2First || a2Last)
       const data = {
         eventId,
         waveId: wave.id,
-        scheduledTime,
-        bibNumber: bib,
+        scheduledTime: forcedTime || scheduledTime,
+        ref,
         name: name.trim(),
+        competitionName: competitionName.trim(),
         categoryId: wave.categoryId,
         athlete1: { firstName: a1First, lastName: a1Last, email: a1Email },
         checkedIn: false,
@@ -36,7 +38,7 @@ export default function TeamForm({ wave, eventId, isDouble, teams, config, onSav
         finishTimeSeconds: null,
         rank: null,
       }
-      if (isDouble) {
+      if (hasAthlete2) {
         data.athlete2 = { firstName: a2First, lastName: a2Last, email: a2Email }
         data.athlete2Confirmed = !!(a2First && a2Last)
       }
@@ -47,6 +49,8 @@ export default function TeamForm({ wave, eventId, isDouble, teams, config, onSav
     }
   }
 
+  const categories = (config?.categories || [])
+
   return (
     <div style={{
       background: 'var(--color-surface-raised)',
@@ -56,18 +60,31 @@ export default function TeamForm({ wave, eventId, isDouble, teams, config, onSav
     }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>
         <div>
-          <Label>Bib</Label>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 500, color: 'var(--color-accent)' }}>{bib}</div>
+          <Label>Ref</Label>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 500, color: 'var(--color-accent)' }}>{ref}</div>
         </div>
         <div>
-          <Label>{isDouble ? 'Team Name' : 'Athlete Name'}</Label>
+          <Label>Team / Athlete Name</Label>
           <input
             value={name}
             onChange={e => setName(e.target.value)}
-            placeholder={isDouble ? 'e.g. Thunder Duo' : 'e.g. Jonas Berg'}
+            placeholder="e.g. Jonas Berg"
             style={inputStyle}
             autoFocus
           />
+        </div>
+        <div>
+          <Label>Competition</Label>
+          <input
+            list="competition-options"
+            value={competitionName}
+            onChange={e => setCompetitionName(e.target.value)}
+            placeholder="e.g. Single Men"
+            style={inputStyle}
+          />
+          <datalist id="competition-options">
+            {categories.map(c => <option key={c.id} value={c.label} />)}
+          </datalist>
         </div>
         {!forcedTime && (
           <div>
@@ -82,7 +99,7 @@ export default function TeamForm({ wave, eventId, isDouble, teams, config, onSav
       </div>
 
       <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 16, marginBottom: 16 }}>
-        <Label>Athlete {isDouble ? '1' : ''}</Label>
+        <Label>Athlete 1</Label>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 6 }}>
           <input value={a1First} onChange={e => setA1First(e.target.value)} placeholder="First name" style={inputStyle} />
           <input value={a1Last} onChange={e => setA1Last(e.target.value)} placeholder="Last name" style={inputStyle} />
@@ -90,16 +107,14 @@ export default function TeamForm({ wave, eventId, isDouble, teams, config, onSav
         </div>
       </div>
 
-      {isDouble && (
-        <div style={{ marginBottom: 16 }}>
-          <Label>Athlete 2 <span style={{ color: 'var(--color-warning)', fontSize: 11 }}>(optional)</span></Label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 6 }}>
-            <input value={a2First} onChange={e => setA2First(e.target.value)} placeholder="First name" style={inputStyle} />
-            <input value={a2Last} onChange={e => setA2Last(e.target.value)} placeholder="Last name" style={inputStyle} />
-            <input value={a2Email} onChange={e => setA2Email(e.target.value)} placeholder="Email" style={inputStyle} type="email" />
-          </div>
+      <div style={{ marginBottom: 16 }}>
+        <Label>Athlete 2 <span style={{ color: 'var(--color-warning)', fontSize: 11 }}>(optional — for doubles)</span></Label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 6 }}>
+          <input value={a2First} onChange={e => setA2First(e.target.value)} placeholder="First name" style={inputStyle} />
+          <input value={a2Last} onChange={e => setA2Last(e.target.value)} placeholder="Last name" style={inputStyle} />
+          <input value={a2Email} onChange={e => setA2Email(e.target.value)} placeholder="Email" style={inputStyle} type="email" />
         </div>
-      )}
+      </div>
 
       <div style={{ display: 'flex', gap: 10 }}>
         <button onClick={handleSave} disabled={saving || !name.trim()} style={btnPrimary}>

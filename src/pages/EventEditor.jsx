@@ -245,7 +245,7 @@ function InfoTab({ name, setName, date, setDate, eventType, setEventType, links,
 
 function TeamsTab({ eventId, waves, config }) {
   const [teams, setTeams] = useState([])
-  const [adding, setAdding] = useState(null) // { waveId, time }
+  const [adding, setAdding] = useState(null) // { waveId, time, laneIndex }
 
   useEffect(() => {
     if (eventId) fetchTeams()
@@ -277,9 +277,7 @@ function TeamsTab({ eventId, waves, config }) {
         </p>
       )}
       {activeWaves.map(wave => {
-        const waveTeams = teams.filter(t => t.waveId === wave.id).sort((a, b) => a.bibNumber - b.bibNumber)
-        const category = config?.categories?.find(c => c.id === wave.categoryId)
-        const isDouble = category?.type === 'double'
+        const waveTeams = teams.filter(t => t.waveId === wave.id).sort((a, b) => (a.ref || '').localeCompare(b.ref || '') || a.bibNumber - b.bibNumber)
         const starts = wave.teamCount || 0
         const lanes = wave.lanes || 1
         const timeSlots = Array.from({ length: starts }, (_, i) =>
@@ -291,9 +289,10 @@ function TeamsTab({ eventId, waves, config }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
               <h3 style={{ fontSize: 18, margin: 0 }}>
                 {wave.label}
+                {wave.name && <span style={{ fontWeight: 400, fontSize: 15, color: 'var(--color-text)', marginLeft: 8 }}>— {wave.name}</span>}
               </h3>
               <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: 14 }}>
-                {wave.startTime} — {category?.label || wave.categoryId}
+                {wave.startTime}
               </span>
               <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
                 {starts} starts × {lanes} lane{lanes !== 1 ? 's' : ''}
@@ -322,15 +321,18 @@ function TeamsTab({ eventId, waves, config }) {
                     {teamsAtTime.map(team => (
                       <div key={team.id} style={{ flex: 1, background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', padding: '8px 10px', minWidth: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', fontWeight: 700, fontSize: 13 }}>#{team.bibNumber}</span>
+                          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', fontWeight: 700, fontSize: 13 }}>{team.ref || `#${team.bibNumber}`}</span>
                           <button onClick={() => deleteTeam(team.id)} style={{ background: 'transparent', border: 'none', color: 'var(--color-accent)', cursor: 'pointer', fontSize: 12, padding: '0 2px', lineHeight: 1 }}>✕</button>
                         </div>
                         <div style={{ fontWeight: 600, fontSize: 13, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{team.name}</div>
+                        {team.competitionName && (
+                          <div style={{ fontSize: 10, color: 'var(--color-accent)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 2 }}>{team.competitionName}</div>
+                        )}
                         <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {team.athlete1?.firstName} {team.athlete1?.lastName}
                           {team.athlete2?.firstName && ` / ${team.athlete2.firstName} ${team.athlete2.lastName}`}
                         </div>
-                        {isDouble && !team.athlete2Confirmed && !team.athlete2?.firstName && (
+                        {team.athlete2 && !team.athlete2Confirmed && !team.athlete2?.firstName && (
                           <span style={{ fontSize: 10, background: 'rgba(245,158,11,0.15)', color: 'var(--color-warning)', padding: '1px 5px', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'inline-block', marginTop: 3 }}>Partner pending</span>
                         )}
                         {team.checkedIn && (
@@ -341,7 +343,7 @@ function TeamsTab({ eventId, waves, config }) {
                     {Array.from({ length: emptyLanes }, (_, i) => (
                       <button
                         key={i}
-                        onClick={() => setAdding(isAddingHere ? null : { waveId: wave.id, time })}
+                        onClick={() => setAdding(isAddingHere ? null : { waveId: wave.id, time, laneIndex: teamsAtTime.length + i })}
                         style={{ flex: 1, background: 'transparent', border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '8px', fontSize: 12, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
                         + Add
@@ -352,7 +354,7 @@ function TeamsTab({ eventId, waves, config }) {
                     <TeamForm
                       wave={wave}
                       eventId={eventId}
-                      isDouble={isDouble}
+                      laneIndex={adding.laneIndex || 0}
                       teams={teams}
                       config={config}
                       forcedTime={time}
