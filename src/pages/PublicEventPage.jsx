@@ -207,7 +207,11 @@ export default function PublicEventPage() {
                 </div>
               )
             }
-            const waveTeams = teams.filter(t => t.waveId === wave.id).sort((a, b) => a.bibNumber - b.bibNumber)
+            const waveTeams = teams.filter(t => t.waveId === wave.id).sort((a, b) =>
+              (a.scheduledTime || '').localeCompare(b.scheduledTime || '') ||
+              (a.ref || '').localeCompare(b.ref || '') ||
+              (a.bibNumber || 0) - (b.bibNumber || 0)
+            )
             if (waveTeams.length === 0) return null
             return (
               <div key={wave.id}>
