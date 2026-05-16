@@ -257,6 +257,45 @@ function InfoTab({ name, setName, date, setDate, eventType, setEventType, lanes,
   )
 }
 
+const MINUTES = ['00','05','10','15','20','25','30','35','40','45','50','55']
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2,'0'))
+
+function SlotTimePicker({ value, onChange }) {
+  const [h, m] = (value || '09:00').split(':')
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <select
+        value={h}
+        onChange={e => onChange(`${e.target.value}:${m}`)}
+        style={timeSelectStyle}
+      >
+        {HOURS.map(hh => <option key={hh} value={hh}>{hh}</option>)}
+      </select>
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', userSelect: 'none' }}>:</span>
+      <select
+        value={MINUTES.includes(m) ? m : '00'}
+        onChange={e => onChange(`${h}:${e.target.value}`)}
+        style={timeSelectStyle}
+      >
+        {MINUTES.map(mm => <option key={mm} value={mm}>{mm}</option>)}
+      </select>
+    </div>
+  )
+}
+
+const timeSelectStyle = {
+  padding: '10px 8px',
+  background: 'var(--color-bg)',
+  border: '1px solid var(--color-border)',
+  color: 'var(--color-text)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 18,
+  fontWeight: 700,
+  cursor: 'pointer',
+  textAlign: 'center',
+  minWidth: 64,
+}
+
 function addMinutes(timeStr, mins) {
   const [h, m] = (timeStr || '00:00').split(':').map(Number)
   const total = h * 60 + m + mins
@@ -268,7 +307,7 @@ function TeamsTab({ eventId, lanes, config }) {
   const [adding, setAdding] = useState(null) // { time, laneIndex }
   const [moving, setMoving] = useState(null) // teamId
   const [moveTo, setMoveTo] = useState('')
-  const [newSlotTime, setNewSlotTime] = useState('')
+  const [newSlotTime, setNewSlotTime] = useState('09:00')
 
   useEffect(() => {
     if (eventId) fetchTeams()
@@ -330,7 +369,7 @@ function TeamsTab({ eventId, lanes, config }) {
       )}
 
       {allTimes.map(time => {
-        const slotTeams = [...timeMap[time]].sort((a, b) => (a.ref || '').localeCompare(b.ref || '') || (a.bibNumber || 0) - (b.bibNumber || 0))
+        const slotTeams = [...(timeMap[time] || [])].sort((a, b) => (a.ref || '').localeCompare(b.ref || '') || (a.bibNumber || 0) - (b.bibNumber || 0))
         const emptyLanes = Math.max(0, effectiveLanes - slotTeams.length)
         const isAddingHere = adding?.time === time
 
@@ -421,7 +460,7 @@ function TeamsTab({ eventId, lanes, config }) {
         {lastTime ? (
           /* Subsequent slots: +5 / +10 as primary CTAs */
           <div>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
               {[5, 10].map(mins => {
                 const t = addMinutes(lastTime, mins)
                 return (
@@ -440,37 +479,17 @@ function TeamsTab({ eventId, lanes, config }) {
                 )
               })}
             </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>or custom:</span>
-              <input
-                type="time"
-                step="300"
-                value={newSlotTime}
-                onChange={e => setNewSlotTime(e.target.value)}
-                style={{ padding: '7px 10px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', fontFamily: 'var(--font-mono)', fontSize: 13 }}
-              />
-              <button
-                onClick={() => { if (newSlotTime) { setAdding({ time: newSlotTime, laneIndex: 0 }); setNewSlotTime('') } }}
-                disabled={!newSlotTime}
-                style={{ ...btnPrimary, opacity: newSlotTime ? 1 : 0.5 }}
-              >Add</button>
+              <SlotTimePicker value={newSlotTime} onChange={setNewSlotTime} />
+              <button onClick={() => setAdding({ time: newSlotTime, laneIndex: 0 })} style={btnPrimary}>Add</button>
             </div>
           </div>
         ) : (
           /* First slot: time picker is the focus */
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <input
-              type="time"
-              step="300"
-              value={newSlotTime}
-              onChange={e => setNewSlotTime(e.target.value)}
-              style={{ padding: '10px 14px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', fontFamily: 'var(--font-mono)', fontSize: 16, minWidth: 140 }}
-            />
-            <button
-              onClick={() => { if (newSlotTime) { setAdding({ time: newSlotTime, laneIndex: 0 }); setNewSlotTime('') } }}
-              disabled={!newSlotTime}
-              style={{ ...btnPrimary, opacity: newSlotTime ? 1 : 0.5 }}
-            >Add Slot</button>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <SlotTimePicker value={newSlotTime} onChange={setNewSlotTime} />
+            <button onClick={() => setAdding({ time: newSlotTime, laneIndex: 0 })} style={btnPrimary}>Add Slot</button>
           </div>
         )}
       </div>
