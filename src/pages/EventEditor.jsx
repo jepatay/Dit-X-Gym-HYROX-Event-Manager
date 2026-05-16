@@ -309,6 +309,11 @@ function TeamsTab({ eventId, lanes, config }) {
   const lastTime = sortedTimes[sortedTimes.length - 1] || null
   const effectiveLanes = lanes || 4
 
+  // Include a newly-added slot that isn't in sortedTimes yet
+  const allTimes = (adding && !sortedTimes.includes(adding.time))
+    ? [...sortedTimes, adding.time].sort()
+    : sortedTimes
+
   if (!eventId) return <p style={{ color: 'var(--color-text-muted)', padding: '24px 0' }}>Save the event first before adding teams.</p>
 
   return (
@@ -320,11 +325,11 @@ function TeamsTab({ eventId, lanes, config }) {
         ))}
       </div>
 
-      {sortedTimes.length === 0 && (
+      {allTimes.length === 0 && (
         <p style={{ color: 'var(--color-text-muted)', padding: '24px 0' }}>No time slots yet. Add one below.</p>
       )}
 
-      {sortedTimes.map(time => {
+      {allTimes.map(time => {
         const slotTeams = [...timeMap[time]].sort((a, b) => (a.ref || '').localeCompare(b.ref || '') || (a.bibNumber || 0) - (b.bibNumber || 0))
         const emptyLanes = Math.max(0, effectiveLanes - slotTeams.length)
         const isAddingHere = adding?.time === time
