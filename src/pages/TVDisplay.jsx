@@ -85,31 +85,35 @@ export default function TVDisplay() {
   const now = `${String(time.getHours()).padStart(2,'0')}:${String(time.getMinutes()).padStart(2,'0')}`
   const isToday = event.date === new Date().toISOString().slice(0, 10)
 
+  const hasWaves = (event.waves || []).length > 0
   const validWaveIds = new Set((event.waves || []).map(w => w.id))
-  const validTeams = teams.filter(t => validWaveIds.has(t.waveId))
+  const validTeams = hasWaves
+    ? teams.filter(t => !t.waveId || validWaveIds.has(t.waveId))
+    : teams
 
   const allSorted = [...validTeams].sort((a, b) =>
     (a.scheduledTime || '').localeCompare(b.scheduledTime || '') || (a.ref || '').localeCompare(b.ref || '') || (a.bibNumber || 0) - (b.bibNumber || 0)
   )
+
+  const thirtyMinsAhead = (() => {
+    const d = new Date(time); d.setMinutes(d.getMinutes() + 30)
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+  })()
   let nextAthletes
   if (isToday) {
-    const upcoming = allSorted.filter(t => (t.scheduledTime || '99:99') >= now)
-    nextAthletes = upcoming.length >= 3 ? upcoming.slice(0, 10) : allSorted.slice(0, 10)
+    const inWindow = allSorted.filter(t => {
+      const st = t.scheduledTime || '99:99'
+      return st >= now && st <= thirtyMinsAhead
+    })
+    nextAthletes = inWindow.length > 0 ? inWindow : allSorted.filter(t => (t.scheduledTime || '99:99') >= now).slice(0, 20)
   } else {
-    nextAthletes = allSorted.slice(0, 10)
+    nextAthletes = allSorted.slice(0, 20)
   }
 
-  const finishedTeams = validTeams.filter(t => t.finishTimeSeconds != null)
-  const leaderboardByCat = []
-  if (config?.categories) {
-    for (const cat of config.categories) {
-      const top3 = finishedTeams
-        .filter(t => t.categoryId === cat.id)
-        .sort((a, b) => a.finishTimeSeconds - b.finishTimeSeconds)
-        .slice(0, 3)
-      if (top3.length) leaderboardByCat.push({ cat, top3 })
-    }
-  }
+  const recentFinishers = [...validTeams]
+    .filter(t => t.finishTimeSeconds != null)
+    .sort((a, b) => b.finishTimeSeconds - a.finishTimeSeconds)
+    .slice(0, 20)
 
   const staff = (config?.staff || []).filter(s => (event.selectedStaffIds || []).includes(s.id))
   const baseUrl = import.meta.env.VITE_PUBLIC_BASE_URL || window.location.origin
@@ -138,7 +142,7 @@ export default function TVDisplay() {
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '5fr 5fr 3fr', gap: 2, background: BORDER2, overflow: 'hidden', minHeight: 0 }}>
 
         {/* Panel 1 — Next Up */}
-        <Panel title="Start List" subtitle={isToday ? `upcoming from ${now}` : event.date}>
+        <Panel title="Next To Start" subtitle={isToday ? `next 30 min from ${now}` : event.date}>
           {nextAthletes.length === 0 ? (
             <Empty>No upcoming starts</Empty>
           ) : <>
@@ -172,29 +176,31 @@ export default function TVDisplay() {
           </>}
         </Panel>
 
-        {/* Panel 2 — Leaderboard */}
-        <Panel title="Leaderboard" subtitle="top 3 per category">
-          {leaderboardByCat.length === 0 ? (
+        {/* Panel 2 — Recent Finishers */}
+        <Panel title="Results" subtitle="most recent">
+          {recentFinishers.length === 0 ? (
             <Empty>No results yet</Empty>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: leaderboardByCat.length > 4 ? '1fr 1fr' : '1fr', gap: '0 14px' }}>
-              {leaderboardByCat.map(({ cat, top3 }) => (
-                <div key={cat.id} style={{ marginBottom: leaderboardByCat.length > 4 ? 8 : 12 }}>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: MUTED, paddingBottom: 3, borderBottom: `1px solid ${BORDER}`, marginBottom: 2 }}>
-                    {cat.label}
+          ) : <>
+            <Row header>
+              <Cell w={56} muted>Ref</Cell>
+              <Cell flex muted>Athlete</Cell>
+              <Cell w={80} muted right>Time</Cell>
+            </Row>
+            {recentFinishers.map(team => (
+              <Row key={team.id}>
+                <Cell w={56} accent mono bold size={14}>{team.ref || team.bibNumber}</Cell>
+                <Cell flex>
+                  <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{team.name}</div>
+                  <div style={{ fontSize: 11, color: MUTED2, marginTop: 1 }}>
+                    {team.athlete1?.firstName} {team.athlete1?.lastName}
+                    {team.athlete2?.firstName && ` / ${team.athlete2.firstName}`}
                   </div>
-                  {top3.map((team, idx) => (
-                    <Row key={team.id} tight>
-                      <Cell w={18} bold size={13} style={{ color: [GOLD, SILVER, BRONZE][idx] }}>{idx + 1}</Cell>
-                      <Cell w={44} accent mono bold size={11}>{team.ref || team.bibNumber}</Cell>
-                      <Cell flex size={12} bold={idx === 0}>{team.name}</Cell>
-                      <Cell w={68} mono bold size={11} accent right>{secondsToHHMMSS(team.finishTimeSeconds)}</Cell>
-                    </Row>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
+                  {team.weight && <div style={{ fontSize: 10, color: GOLD, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{team.weight}</div>}
+                </Cell>
+                <Cell w={80} mono bold size={13} right style={{ color: SUCCESS }}>{secondsToHHMMSS(team.finishTimeSeconds)}</Cell>
+              </Row>
+            ))}
+          </>}
         </Panel>
 
         {/* Panel 3 — QR + Staff */}

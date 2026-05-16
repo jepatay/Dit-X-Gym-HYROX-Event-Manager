@@ -6,8 +6,7 @@ export default function EventNav({ id, eventName, publicSlug }) {
 
   const tabs = [
     { path: `/event/${id}/checkin`, label: 'Check-in' },
-    { path: `/event/${id}/startlist`, label: 'Start List' },
-    { path: `/event/${id}/results`, label: 'Results' },
+    { path: `/event/${id}/admin`, label: 'Admin' },
     { path: `/event/${id}/qr`, label: 'QR Code' },
   ]
 

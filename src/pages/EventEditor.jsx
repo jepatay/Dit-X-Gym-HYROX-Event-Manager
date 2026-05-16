@@ -8,16 +8,15 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
 import NavBar from '../components/NavBar'
 import CalendarPicker from '../components/CalendarPicker'
-import WaveBuilder from '../components/WaveBuilder'
 import ChecklistPanel from '../components/ChecklistPanel'
 import TeamForm from '../components/TeamForm'
 import WeightCheatSheet from '../components/WeightCheatSheet'
 import SaveConfirmation from '../components/SaveConfirmation'
 import { generateSlug } from '../utils/slugUtils'
 import { getOrCreateConfig } from '../utils/firestoreUtils'
-import { slotTime } from '../utils/timeUtils'
+import { generateRef } from '../utils/bibUtils'
 
-const TABS = ['Info', 'Waves', 'Teams', 'Checklist', 'Event Setup']
+const TABS = ['Info', 'Teams', 'Checklist', 'Event Setup']
 
 export default function EventEditor() {
   const { id } = useParams()
@@ -34,6 +33,7 @@ export default function EventEditor() {
   const [eventType, setEventType] = useState('Full HYROX')
   const [links, setLinks] = useState([])
   const [waves, setWaves] = useState([])
+  const [lanes, setLanes] = useState(4)
   const [checklist, setChecklist] = useState({})
   const [maps, setMaps] = useState({})
   const [selectedStaffIds, setSelectedStaffIds] = useState([])
@@ -55,6 +55,7 @@ export default function EventEditor() {
 
     setLinks(d.links || [])
     setWaves(d.waves || [])
+    setLanes(d.lanes || (d.waves?.[0]?.lanes) || 4)
     setChecklist(d.checklist || {})
     setMaps(d.maps || {})
     setSelectedStaffIds(d.selectedStaffIds || [])
@@ -65,7 +66,7 @@ export default function EventEditor() {
   function buildData(slug) {
     const today = new Date().toISOString().substring(0, 10)
     const status = date < today ? 'past' : date === today ? 'live' : 'future'
-    return { name, date, eventType, status, links, waves, checklist, maps, selectedStaffIds, weightOverrides, publicSlug: slug }
+    return { name, date, eventType, status, links, waves, lanes, checklist, maps, selectedStaffIds, weightOverrides, publicSlug: slug }
   }
 
   async function saveEvent() {
@@ -139,30 +140,22 @@ export default function EventEditor() {
             name={name} setName={setName}
             date={date} setDate={setDate}
             eventType={eventType} setEventType={setEventType}
-
+            lanes={lanes} setLanes={setLanes}
             links={links} setLinks={setLinks}
             onSave={saveEvent} saved={saved}
           />
         )}
         {tab === 1 && (
-          <WaveBuilder
-            waves={waves} setWaves={setWaves}
-            config={config}
-            eventType={eventType}
-            onSave={saveEvent} saved={saved}
-          />
+          <TeamsTab eventId={eventId} lanes={lanes} config={config} />
         )}
         {tab === 2 && (
-          <TeamsTab eventId={eventId} waves={waves} config={config} />
-        )}
-        {tab === 3 && (
           <ChecklistPanel
             checklist={checklist} setChecklist={setChecklist}
             config={config}
             onSave={saveEvent} saved={saved}
           />
         )}
-        {tab === 4 && (
+        {tab === 3 && (
           <EventSetupTab
             maps={maps} setMaps={setMaps}
             selectedStaffIds={selectedStaffIds} setSelectedStaffIds={setSelectedStaffIds}
@@ -177,7 +170,7 @@ export default function EventEditor() {
   )
 }
 
-function InfoTab({ name, setName, date, setDate, eventType, setEventType, links, setLinks, onSave, saved }) {
+function InfoTab({ name, setName, date, setDate, eventType, setEventType, lanes, setLanes, links, setLinks, onSave, saved }) {
   return (
     <div style={{ maxWidth: 620 }}>
       <Field label="Event Name">
@@ -213,6 +206,27 @@ function InfoTab({ name, setName, date, setDate, eventType, setEventType, links,
           ))}
         </div>
       </Field>
+      <Field label="Simultaneous Lanes">
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[1, 2, 3, 4].map(n => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setLanes(n)}
+              style={{
+                padding: '8px 22px',
+                background: lanes === n ? 'var(--color-accent)' : 'transparent',
+                border: '1px solid ' + (lanes === n ? 'var(--color-accent)' : 'var(--color-border)'),
+                color: lanes === n ? '#fff' : 'var(--color-text)',
+                fontFamily: 'var(--font-heading)',
+                fontSize: 13,
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+              }}
+            >{n}</button>
+          ))}
+        </div>
+      </Field>
       <Field label="Custom Links">
         {links.map((link, i) => (
           <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
@@ -243,9 +257,18 @@ function InfoTab({ name, setName, date, setDate, eventType, setEventType, links,
   )
 }
 
-function TeamsTab({ eventId, waves, config }) {
+function addMinutes(timeStr, mins) {
+  const [h, m] = (timeStr || '00:00').split(':').map(Number)
+  const total = h * 60 + m + mins
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+
+function TeamsTab({ eventId, lanes, config }) {
   const [teams, setTeams] = useState([])
-  const [adding, setAdding] = useState(null) // { waveId, time, laneIndex }
+  const [adding, setAdding] = useState(null) // { time, laneIndex }
+  const [moving, setMoving] = useState(null) // teamId
+  const [moveTo, setMoveTo] = useState('')
+  const [newSlotTime, setNewSlotTime] = useState('')
 
   useEffect(() => {
     if (eventId) fetchTeams()
@@ -263,132 +286,152 @@ function TeamsTab({ eventId, waves, config }) {
     setTeams(ts => ts.filter(t => t.id !== teamId))
   }
 
-  const activeWaves = waves.filter(w => !w.isRestWave)
-
-  if (!eventId) {
-    return <p style={{ color: 'var(--color-text-muted)', padding: '24px 0' }}>Save the event first before adding teams.</p>
+  async function doMoveTeam(team) {
+    const dest = moveTo.trim()
+    if (!dest) return
+    const teamsAtDest = teams.filter(t => t.id !== team.id && t.scheduledTime === dest)
+    const laneIndex = teamsAtDest.length
+    const newRef = generateRef(dest, laneIndex)
+    await updateDoc(doc(db, 'teams', team.id), { scheduledTime: dest, ref: newRef })
+    setTeams(ts => ts.map(t => t.id === team.id ? { ...t, scheduledTime: dest, ref: newRef } : t))
+    setMoving(null)
+    setMoveTo('')
   }
+
+  const timeMap = {}
+  for (const team of teams) {
+    const t = team.scheduledTime || '__unknown__'
+    if (!timeMap[t]) timeMap[t] = []
+    timeMap[t].push(team)
+  }
+  const sortedTimes = Object.keys(timeMap).filter(t => t !== '__unknown__').sort()
+  const unknownTeams = timeMap['__unknown__'] || []
+  const lastTime = sortedTimes[sortedTimes.length - 1] || null
+  const effectiveLanes = lanes || 4
+
+  if (!eventId) return <p style={{ color: 'var(--color-text-muted)', padding: '24px 0' }}>Save the event first before adding teams.</p>
 
   return (
     <div>
-      {activeWaves.length === 0 && (
-        <p style={{ color: 'var(--color-text-muted)', marginBottom: 24 }}>
-          Add waves in the Waves tab first, then return here to add athletes.
-        </p>
+      <div style={{ display: 'flex', gap: 8, paddingBottom: 6, borderBottom: '2px solid var(--color-border)', marginBottom: 2 }}>
+        <div style={{ width: 54, flexShrink: 0, fontSize: 10, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)' }}>Time</div>
+        {Array.from({ length: effectiveLanes }, (_, i) => (
+          <div key={i} style={{ flex: 1, fontSize: 10, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)' }}>Lane {i + 1}</div>
+        ))}
+      </div>
+
+      {sortedTimes.length === 0 && (
+        <p style={{ color: 'var(--color-text-muted)', padding: '24px 0' }}>No time slots yet. Add one below.</p>
       )}
-      {(() => {
-        const validWaveIds = new Set(activeWaves.map(w => w.id))
-        const orphaned = teams.filter(t => !validWaveIds.has(t.waveId))
-        if (orphaned.length === 0) return null
-        return (
-          <div style={{ marginBottom: 32, padding: 16, border: '1px solid var(--color-accent)', background: 'rgba(239,68,68,0.06)' }}>
-            <h3 style={{ fontSize: 14, color: 'var(--color-accent)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
-              Orphaned Teams ({orphaned.length}) — wave was deleted or not saved
-            </h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {orphaned.map(team => (
-                <div key={team.id} style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', fontWeight: 700, fontSize: 13 }}>{team.ref || `#${team.bibNumber}`}</span>
-                  <span style={{ fontWeight: 600, fontSize: 13 }}>{team.name}</span>
-                  <button onClick={() => deleteTeam(team.id)} style={{ background: 'transparent', border: 'none', color: 'var(--color-accent)', cursor: 'pointer', fontSize: 13, padding: 0, lineHeight: 1 }}>✕ Delete</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      })()}
-      {activeWaves.map(wave => {
-        const waveTeams = teams.filter(t => t.waveId === wave.id).sort((a, b) => (a.ref || '').localeCompare(b.ref || '') || a.bibNumber - b.bibNumber)
-        const starts = wave.teamCount || 0
-        const lanes = wave.lanes || 1
-        const timeSlots = Array.from({ length: starts }, (_, i) =>
-          slotTime(wave.startTime, i, wave.intervalMinutes || 0)
-        )
+
+      {sortedTimes.map(time => {
+        const slotTeams = [...timeMap[time]].sort((a, b) => (a.ref || '').localeCompare(b.ref || '') || (a.bibNumber || 0) - (b.bibNumber || 0))
+        const emptyLanes = Math.max(0, effectiveLanes - slotTeams.length)
+        const isAddingHere = adding?.time === time
 
         return (
-          <div key={wave.id} style={{ marginBottom: 48 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-              <h3 style={{ fontSize: 18, margin: 0 }}>
-                {wave.label}
-                {wave.name && <span style={{ fontWeight: 400, fontSize: 15, color: 'var(--color-text)', marginLeft: 8 }}>— {wave.name}</span>}
-              </h3>
-              <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: 14 }}>
-                {wave.startTime}
-              </span>
-              <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
-                {starts} starts × {lanes} lane{lanes !== 1 ? 's' : ''}
-              </span>
-            </div>
-
-            {/* Column headers */}
-            <div style={{ display: 'flex', gap: 8, paddingBottom: 6, borderBottom: '2px solid var(--color-border)', marginBottom: 2 }}>
-              <div style={{ width: 54, flexShrink: 0, fontSize: 10, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)' }}>Time</div>
-              {Array.from({ length: lanes }, (_, i) => (
-                <div key={i} style={{ flex: 1, fontSize: 10, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)' }}>
-                  Lane {i + 1}
-                </div>
-              ))}
-            </div>
-
-            {timeSlots.map(time => {
-              const teamsAtTime = waveTeams.filter(t => t.scheduledTime === time).sort((a, b) => a.bibNumber - b.bibNumber)
-              const emptyLanes = Math.max(0, lanes - teamsAtTime.length)
-              const isAddingHere = adding?.waveId === wave.id && adding?.time === time
-
-              return (
-                <div key={time}>
-                  <div style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--color-border)', alignItems: 'stretch', minHeight: 56 }}>
-                    <div style={{ width: 54, flexShrink: 0, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--color-text-muted)', paddingTop: 10 }}>{time}</div>
-                    {teamsAtTime.map(team => (
-                      <div key={team.id} style={{ flex: 1, background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', padding: '8px 10px', minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', fontWeight: 700, fontSize: 13 }}>{team.ref || `#${team.bibNumber}`}</span>
-                          <button onClick={() => deleteTeam(team.id)} style={{ background: 'transparent', border: 'none', color: 'var(--color-accent)', cursor: 'pointer', fontSize: 12, padding: '0 2px', lineHeight: 1 }}>✕</button>
-                        </div>
-                        <div style={{ fontWeight: 600, fontSize: 13, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{team.name}</div>
-                        {team.competitionName && (
-                          <div style={{ fontSize: 10, color: 'var(--color-accent)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 2 }}>{team.competitionName}</div>
-                        )}
-                        <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {team.athlete1?.firstName} {team.athlete1?.lastName}
-                          {team.athlete2?.firstName && ` / ${team.athlete2.firstName} ${team.athlete2.lastName}`}
-                        </div>
-                        {team.athlete2 && !team.athlete2Confirmed && !team.athlete2?.firstName && (
-                          <span style={{ fontSize: 10, background: 'rgba(245,158,11,0.15)', color: 'var(--color-warning)', padding: '1px 5px', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'inline-block', marginTop: 3 }}>Partner pending</span>
-                        )}
-                        {team.checkedIn && (
-                          <span style={{ fontSize: 10, color: 'var(--color-success)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', display: 'inline-block', marginTop: 3 }}>✓ In</span>
-                        )}
-                      </div>
-                    ))}
-                    {Array.from({ length: emptyLanes }, (_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setAdding(isAddingHere ? null : { waveId: wave.id, time, laneIndex: teamsAtTime.length + i })}
-                        style={{ flex: 1, background: 'transparent', border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '8px', fontSize: 12, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        + Add
-                      </button>
-                    ))}
+          <div key={time}>
+            <div style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--color-border)', alignItems: 'stretch', minHeight: 60 }}>
+              <div style={{ width: 54, flexShrink: 0, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--color-text-muted)', paddingTop: 10 }}>{time}</div>
+              {slotTeams.map(team => (
+                <div key={team.id} style={{ flex: 1, background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', padding: '8px 10px', minWidth: 0, position: 'relative' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', fontWeight: 700, fontSize: 13 }}>{team.ref || `#${team.bibNumber}`}</span>
+                    <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                      <button onClick={() => { setMoving(moving === team.id ? null : team.id); setMoveTo(team.scheduledTime || '') }} title="Move to another slot" style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}>⏱</button>
+                      <button onClick={() => deleteTeam(team.id)} style={{ background: 'transparent', border: 'none', color: 'var(--color-accent)', cursor: 'pointer', fontSize: 12, padding: '0 2px', lineHeight: 1 }}>✕</button>
+                    </div>
                   </div>
-                  {isAddingHere && (
-                    <TeamForm
-                      wave={wave}
-                      eventId={eventId}
-                      laneIndex={adding.laneIndex || 0}
-                      teams={teams}
-                      config={config}
-                      forcedTime={time}
-                      onSaved={(newTeam) => { setTeams(ts => [...ts, newTeam]); setAdding(null) }}
-                      onCancel={() => setAdding(null)}
-                    />
+                  <div style={{ fontWeight: 600, fontSize: 13, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team.name}</div>
+                  {team.competitionName && <div style={{ fontSize: 10, color: 'var(--color-accent)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{team.competitionName}</div>}
+                  {team.weight && <div style={{ fontSize: 10, color: '#f59e0b', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{team.weight}</div>}
+                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {team.athlete1?.firstName} {team.athlete1?.lastName}
+                    {team.athlete2?.firstName && ` / ${team.athlete2.firstName}`}
+                  </div>
+                  {team.checkedIn && <span style={{ fontSize: 10, color: 'var(--color-success)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', display: 'inline-block', marginTop: 2 }}>✓ In</span>}
+                  {moving === team.id && (
+                    <div style={{ marginTop: 8, borderTop: '1px solid var(--color-border)', paddingTop: 8 }}>
+                      <div style={{ fontSize: 10, color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', marginBottom: 6 }}>Move to slot</div>
+                      <input
+                        list={`move-times-${team.id}`}
+                        value={moveTo}
+                        onChange={e => setMoveTo(e.target.value)}
+                        placeholder="HH:MM"
+                        style={{ width: '100%', padding: '5px 8px', marginBottom: 6, background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', fontFamily: 'var(--font-mono)', fontSize: 13, boxSizing: 'border-box' }}
+                      />
+                      <datalist id={`move-times-${team.id}`}>
+                        {sortedTimes.filter(t => t !== time).map(t => <option key={t} value={t} />)}
+                      </datalist>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => doMoveTeam(team)} disabled={!moveTo.trim()} style={{ padding: '5px 12px', background: 'var(--color-accent)', color: '#fff', border: 'none', fontFamily: 'var(--font-heading)', fontSize: 11, textTransform: 'uppercase', cursor: 'pointer', opacity: moveTo.trim() ? 1 : 0.5 }}>Move</button>
+                        <button onClick={() => setMoving(null)} style={{ padding: '5px 10px', background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', fontSize: 11, textTransform: 'uppercase', cursor: 'pointer' }}>Cancel</button>
+                      </div>
+                    </div>
                   )}
                 </div>
-              )
-            })}
+              ))}
+              {Array.from({ length: emptyLanes }, (_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setAdding(isAddingHere && adding?.laneIndex === slotTeams.length + i ? null : { time, laneIndex: slotTeams.length + i })}
+                  style={{ flex: 1, background: 'transparent', border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '8px', fontSize: 12, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >+ Add</button>
+              ))}
+            </div>
+            {isAddingHere && (
+              <TeamForm
+                eventId={eventId}
+                scheduledTime={adding.time}
+                laneIndex={adding.laneIndex || 0}
+                config={config}
+                onSaved={(newTeam) => { setTeams(ts => [...ts, newTeam]); setAdding(null) }}
+                onCancel={() => setAdding(null)}
+              />
+            )}
           </div>
         )
       })}
+
+      {unknownTeams.length > 0 && (
+        <div style={{ marginTop: 16, padding: 12, border: '1px solid var(--color-border)', background: 'var(--color-surface-raised)' }}>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', marginBottom: 8 }}>No time assigned</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {unknownTeams.map(team => (
+              <div key={team.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-bg)', border: '1px solid var(--color-border)', padding: '6px 10px' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', fontWeight: 700, fontSize: 13 }}>{team.ref || `#${team.bibNumber}`}</span>
+                <span style={{ fontWeight: 600, fontSize: 13 }}>{team.name}</span>
+                <button onClick={() => deleteTeam(team.id)} style={{ background: 'transparent', border: 'none', color: 'var(--color-accent)', cursor: 'pointer', fontSize: 12, padding: 0 }}>✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginTop: 32, paddingTop: 20, borderTop: '1px solid var(--color-border)' }}>
+        <div style={{ fontSize: 11, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)', marginBottom: 12 }}>Add new time slot</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {lastTime && (
+            <>
+              <button onClick={() => { const t = addMinutes(lastTime, 5); setAdding({ time: t, laneIndex: 0 }) }} style={btnSecondary}>+5 min ({addMinutes(lastTime, 5)})</button>
+              <button onClick={() => { const t = addMinutes(lastTime, 10); setAdding({ time: t, laneIndex: 0 }) }} style={btnSecondary}>+10 min ({addMinutes(lastTime, 10)})</button>
+            </>
+          )}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              value={newSlotTime}
+              onChange={e => setNewSlotTime(e.target.value)}
+              placeholder="HH:MM"
+              style={{ width: 80, padding: '8px 10px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', fontFamily: 'var(--font-mono)', fontSize: 13 }}
+            />
+            <button
+              onClick={() => { if (newSlotTime.trim()) { setAdding({ time: newSlotTime.trim(), laneIndex: 0 }); setNewSlotTime('') } }}
+              disabled={!newSlotTime.trim()}
+              style={{ ...btnPrimary, opacity: newSlotTime.trim() ? 1 : 0.5 }}
+            >Add slot</button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

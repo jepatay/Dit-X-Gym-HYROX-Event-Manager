@@ -12,6 +12,7 @@ import PublicEventPage from './pages/PublicEventPage'
 import Settings from './pages/Settings'
 import TVDisplay from './pages/TVDisplay'
 import StartDisplay from './pages/StartDisplay'
+import AdminPage from './pages/AdminPage'
 
 function ProtectedRoute({ children }) {
   const user = useAuth()
@@ -32,6 +33,7 @@ function AppRoutes() {
       <Route path="/event/new" element={<ProtectedRoute><EventEditor /></ProtectedRoute>} />
       <Route path="/event/:id" element={<ProtectedRoute><EventEditor /></ProtectedRoute>} />
       <Route path="/event/:id/checkin" element={<ProtectedRoute><CheckIn /></ProtectedRoute>} />
+      <Route path="/event/:id/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
       <Route path="/event/:id/qr" element={<ProtectedRoute><QRPage /></ProtectedRoute>} />
       <Route path="/event/:id/startlist" element={<ProtectedRoute><StartList /></ProtectedRoute>} />
       <Route path="/event/:id/results" element={<ProtectedRoute><Results /></ProtectedRoute>} />

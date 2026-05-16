@@ -2,15 +2,19 @@ import { useState, useRef } from 'react'
 import { collection, addDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { generateRef } from '../utils/bibUtils'
-import { slotTime } from '../utils/timeUtils'
 
-export default function TeamForm({ wave, eventId, laneIndex = 0, teams, config, onSaved, onCancel, forcedTime }) {
-  const ref = generateRef(forcedTime || slotTime(wave.startTime || '00:00', 0, wave.intervalMinutes || 5), laneIndex)
-  const defaultTime = forcedTime || slotTime(wave.startTime || '00:00', (teams || []).filter(t => t.waveId === wave.id).length, wave.intervalMinutes || 5)
+const WEIGHT_OPTIONS = [
+  { value: 'Women Weight', label: 'Women' },
+  { value: 'Men Weight', label: 'Men' },
+  { value: 'Pro Weight', label: 'Pro' },
+]
+
+export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config, onSaved, onCancel }) {
+  const teamRef = generateRef(scheduledTime, laneIndex)
 
   const [name, setName] = useState('')
-  const [scheduledTime, setScheduledTime] = useState(defaultTime)
   const [competitionName, setCompetitionName] = useState('')
+  const [weight, setWeight] = useState('')
   const [a1First, setA1First] = useState('')
   const [a1Last, setA1Last] = useState('')
   const [a1Email, setA1Email] = useState('')
@@ -28,12 +32,11 @@ export default function TeamForm({ wave, eventId, laneIndex = 0, teams, config, 
       const hasAthlete2 = !!(a2First || a2Last)
       const data = {
         eventId,
-        waveId: wave.id,
-        scheduledTime: forcedTime || scheduledTime,
-        ref,
+        scheduledTime,
+        ref: teamRef,
         name: name.trim(),
         competitionName: competitionName.trim(),
-        categoryId: wave.categoryId,
+        weight: weight || null,
         athlete1: { firstName: a1First, lastName: a1Last, email: a1Email },
         checkedIn: false,
         checkedInAt: null,
@@ -55,26 +58,16 @@ export default function TeamForm({ wave, eventId, laneIndex = 0, teams, config, 
   const categories = (config?.categories || [])
 
   return (
-    <div style={{
-      background: 'var(--color-surface-raised)',
-      border: '1px solid var(--color-border)',
-      padding: 20,
-      marginBottom: 16,
-    }}>
+    <div style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', padding: 20, marginBottom: 16 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>
         <div>
           <Label>Ref</Label>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 500, color: 'var(--color-accent)' }}>{ref}</div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 500, color: 'var(--color-accent)' }}>{teamRef}</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>{scheduledTime}</div>
         </div>
         <div>
           <Label>Team / Athlete Name</Label>
-          <input
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="e.g. Jonas Berg"
-            style={inputStyle}
-            autoFocus
-          />
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Jonas Berg" style={inputStyle} autoFocus />
         </div>
         <div>
           <Label>Competition</Label>
@@ -89,16 +82,28 @@ export default function TeamForm({ wave, eventId, laneIndex = 0, teams, config, 
             {categories.map(c => <option key={c.id} value={c.label} />)}
           </datalist>
         </div>
-        {!forcedTime && (
-          <div>
-            <Label>Start Time</Label>
-            <input
-              value={scheduledTime}
-              onChange={e => setScheduledTime(e.target.value)}
-              style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
-            />
+        <div>
+          <Label>Weight</Label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {WEIGHT_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setWeight(weight === opt.value ? '' : opt.value)}
+                style={{
+                  padding: '6px 10px',
+                  background: weight === opt.value ? '#f59e0b' : 'transparent',
+                  border: `1px solid ${weight === opt.value ? '#f59e0b' : 'var(--color-border)'}`,
+                  color: weight === opt.value ? '#000' : 'var(--color-text-muted)',
+                  fontFamily: 'var(--font-heading)',
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                }}
+              >{opt.label}</button>
+            ))}
           </div>
-        )}
+        </div>
       </div>
 
       <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 16, marginBottom: 16 }}>
@@ -131,47 +136,10 @@ export default function TeamForm({ wave, eventId, laneIndex = 0, teams, config, 
 
 function Label({ children }) {
   return (
-    <div style={{
-      fontSize: 11,
-      fontFamily: 'var(--font-heading)',
-      textTransform: 'uppercase',
-      letterSpacing: '0.1em',
-      color: 'var(--color-text-muted)',
-      marginBottom: 4,
-    }}>{children}</div>
+    <div style={{ fontSize: 11, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)', marginBottom: 4 }}>{children}</div>
   )
 }
 
-const inputStyle = {
-  width: '100%',
-  padding: '8px 10px',
-  background: 'var(--color-bg)',
-  border: '1px solid var(--color-border)',
-  color: 'var(--color-text)',
-  fontSize: 13,
-}
-
-const btnPrimary = {
-  padding: '8px 20px',
-  background: 'var(--color-accent)',
-  color: '#fff',
-  border: 'none',
-  fontFamily: 'var(--font-heading)',
-  fontSize: 13,
-  fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-  cursor: 'pointer',
-}
-
-const btnSecondary = {
-  padding: '8px 20px',
-  background: 'transparent',
-  color: 'var(--color-text-muted)',
-  border: '1px solid var(--color-border)',
-  fontFamily: 'var(--font-heading)',
-  fontSize: 13,
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-  cursor: 'pointer',
-}
+const inputStyle = { width: '100%', padding: '8px 10px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', fontSize: 13 }
+const btnPrimary = { padding: '8px 20px', background: 'var(--color-accent)', color: '#fff', border: 'none', fontFamily: 'var(--font-heading)', fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer' }
+const btnSecondary = { padding: '8px 20px', background: 'transparent', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', fontFamily: 'var(--font-heading)', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer' }

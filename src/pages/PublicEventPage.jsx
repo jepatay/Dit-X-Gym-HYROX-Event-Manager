@@ -134,9 +134,13 @@ export default function PublicEventPage() {
 
   const selectedStaff = (config?.staff || []).filter(s => (event.selectedStaffIds || []).includes(s.id))
 
+  // Flat start list sorted by time
+  const sortedTeams = [...teams].sort((a, b) =>
+    (a.scheduledTime || '').localeCompare(b.scheduledTime || '') || (a.ref || '').localeCompare(b.ref || '')
+  )
+
   const tabs = [
     { id: 'startlist', label: 'Start List' },
-    { id: 'leaderboard', label: 'Leaderboard' },
     { id: 'mapstaff', label: 'Map + Staff' },
   ]
 
@@ -199,109 +203,37 @@ export default function PublicEventPage() {
       {/* ── Start List Tab ── */}
       {activeTab === 'startlist' && (
         <Section title="Start List">
-          {waves.map(wave => {
-            if (wave.isRestWave) {
-              return (
-                <div key={wave.id} style={{ padding: '12px 20px', color: MUTED2, fontSize: 13, fontStyle: 'italic', textAlign: 'center', borderBottom: `1px solid ${BORDER}` }}>
-                  ── {wave.label} — {wave.durationMinutes} min ──
-                </div>
-              )
-            }
-            const waveTeams = teams.filter(t => t.waveId === wave.id).sort((a, b) =>
-              (a.scheduledTime || '').localeCompare(b.scheduledTime || '') ||
-              (a.ref || '').localeCompare(b.ref || '') ||
-              (a.bibNumber || 0) - (b.bibNumber || 0)
-            )
-            if (waveTeams.length === 0) return null
-            return (
-              <div key={wave.id}>
-                <div style={{ background: SURFACE, padding: '8px 20px', borderBottom: `1px solid ${BORDER}`, borderTop: `1px solid ${BORDER}` }}>
-                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700, textTransform: 'uppercase', color: TEXT }}>{wave.label}</span>
-                  <span style={{ marginLeft: 12, fontFamily: 'DM Mono, monospace', fontSize: 13, color: MUTED }}>{wave.startTime}</span>
-                </div>
-                {waveTeams.map(team => (
-                  <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', borderBottom: `1px solid ${BORDER2}`, gap: 12 }}>
-                    <span style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 16, minWidth: 48 }}>{team.ref || team.bibNumber}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 15, color: TEXT }}>{team.name}</div>
-                      {team.competitionName && (
-                        <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>{team.competitionName}</div>
-                      )}
-                      <div style={{ fontSize: 12, color: MUTED2, marginTop: 2 }}>
-                        {team.athlete1?.firstName} {team.athlete1?.lastName}
-                        {team.athlete2?.firstName && <> / {team.athlete2.firstName} {team.athlete2.lastName}</>}
-                      </div>
-                      <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: MUTED2, marginTop: 2 }}>{team.scheduledTime}</div>
-                    </div>
-                    {team.checkedIn ? (
-                      <span style={{
-                        fontSize: 11, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700,
-                        textTransform: 'uppercase', letterSpacing: '0.06em',
-                        color: '#22c55e', background: 'rgba(34,197,94,0.12)',
-                        border: '1px solid rgba(34,197,94,0.3)',
-                        padding: '3px 8px', whiteSpace: 'nowrap', flexShrink: 0,
-                      }}>
-                        ✓ Checked in
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => setCheckInPopup(true)}
-                        style={{
-                          fontSize: 11, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700,
-                          textTransform: 'uppercase', letterSpacing: '0.06em',
-                          color: MUTED2, background: 'transparent',
-                          border: `1px solid ${BORDER}`,
-                          padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                        }}
-                      >
-                        Check in
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )
-          })}
-        </Section>
-      )}
-
-      {/* ── Leaderboard Tab ── */}
-      {activeTab === 'leaderboard' && (
-        <Section title="Leaderboard">
-          {leaderboardByCategory.length === 0 ? (
-            <p style={{ padding: '24px 20px', color: MUTED2, fontFamily: 'DM Mono, monospace', fontSize: 13 }}>No results yet</p>
-          ) : (
-            leaderboardByCategory.map(({ cat, catTeams }) => (
-              <div key={cat.id}>
-                <div style={{ background: SURFACE, padding: '8px 20px', borderBottom: `1px solid ${BORDER}`, borderTop: `1px solid ${BORDER}` }}>
-                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, fontWeight: 700, textTransform: 'uppercase', color: MUTED }}>{cat.label}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '36px 40px 1fr auto', gap: 8, padding: '6px 20px', borderBottom: `1px solid ${SURFACE2}` }}>
-                  {['#', 'Bib', 'Team', 'Time'].map(h => (
-                    <span key={h} style={{ fontSize: 10, color: MUTED2, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</span>
-                  ))}
-                </div>
-                {catTeams.map((team, idx) => (
-                  <div key={team.id} style={{ display: 'grid', gridTemplateColumns: '36px 40px 1fr auto', gap: 8, padding: '12px 20px', borderBottom: `1px solid ${BORDER2}`, alignItems: 'center' }}>
-                    <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 15, color: idx === 0 ? '#f59e0b' : idx === 1 ? '#9ca3af' : idx === 2 ? '#b45309' : MUTED2 }}>
-                      {idx + 1}
-                    </span>
-                    <span style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 14 }}>{team.bibNumber}</span>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: TEXT }}>{team.name}</div>
-                      <div style={{ fontSize: 11, color: MUTED2, marginTop: 2 }}>
-                        {team.athlete1?.firstName} {team.athlete1?.lastName}
-                        {team.athlete2?.firstName && <> / {team.athlete2.firstName} {team.athlete2.lastName}</>}
-                      </div>
-                    </div>
-                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, color: ACCENT, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      {secondsToHHMMSS(team.finishTimeSeconds)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ))
+          {sortedTeams.length === 0 && (
+            <p style={{ padding: '24px 20px', color: MUTED2, fontFamily: 'DM Mono, monospace', fontSize: 13 }}>No athletes registered yet</p>
           )}
+          {sortedTeams.map(team => (
+            <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', borderBottom: `1px solid ${BORDER2}`, gap: 12 }}>
+              <div style={{ minWidth: 56, flexShrink: 0 }}>
+                <div style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 16 }}>{team.ref || team.bibNumber}</div>
+                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: MUTED2 }}>{team.scheduledTime}</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 15, color: TEXT }}>{team.name}</div>
+                {team.competitionName && (
+                  <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>{team.competitionName}</div>
+                )}
+                {team.weight && (
+                  <div style={{ fontSize: 11, color: '#f59e0b', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{team.weight}</div>
+                )}
+                <div style={{ fontSize: 12, color: MUTED2, marginTop: 2 }}>
+                  {team.athlete1?.firstName} {team.athlete1?.lastName}
+                  {team.athlete2?.firstName && <> / {team.athlete2.firstName} {team.athlete2.lastName}</>}
+                </div>
+              </div>
+              <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                {team.finishTimeSeconds != null ? (
+                  <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 14, color: '#22c55e', fontWeight: 700 }}>{secondsToHHMMSS(team.finishTimeSeconds)}</div>
+                ) : team.checkedIn ? (
+                  <span style={{ fontSize: 11, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#22c55e', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', padding: '3px 8px' }}>✓ In</span>
+                ) : null}
+              </div>
+            </div>
+          ))}
         </Section>
       )}
 
