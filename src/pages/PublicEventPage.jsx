@@ -58,6 +58,12 @@ export default function PublicEventPage() {
   const [expandedWeights, setExpandedWeights] = useState({})
   const [activeTab, setActiveTab] = useState('startlist')
   const [checkInPopup, setCheckInPopup] = useState(false)
+  const [time, setTime] = useState(new Date())
+
+  useEffect(() => {
+    const clock = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(clock)
+  }, [])
 
   useEffect(() => { loadData() }, [slug])
 
@@ -144,6 +150,8 @@ export default function PublicEventPage() {
     { id: 'mapstaff', label: 'Map + Staff' },
   ]
 
+  const clockStr = time.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+
   return (
     <div style={{ background: BG, color: TEXT, minHeight: '100vh', fontFamily: 'Inter, sans-serif', maxWidth: 600, margin: '0 auto' }}>
       {offline && (
@@ -152,27 +160,23 @@ export default function PublicEventPage() {
         </div>
       )}
 
-      {/* Header */}
-      <div style={{ background: SURFACE, borderBottom: `1px solid ${BORDER}`, padding: '24px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-          <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 800, fontSize: 20, color: ACCENT, textTransform: 'uppercase' }}>DIT X-GYM</span>
-          <StatusBadge status={status} />
+      {/* Sticky header */}
+      <div style={{ background: SURFACE, borderBottom: `3px solid ${ACCENT}`, padding: '10px 16px', position: 'sticky', top: 0, zIndex: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+              <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 800, fontSize: 11, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.12em' }}>DIT X-GYM</span>
+              <StatusBadge status={status} />
+            </div>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 800, fontSize: 22, color: TEXT, lineHeight: 1.1, textTransform: 'uppercase' }}>{event.name}</div>
+            <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: MUTED, marginTop: 2 }}>{event.date}{event.eventType ? ` · ${event.eventType}` : ''}</div>
+          </div>
+          <div style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 28, color: ACCENT, lineHeight: 1, flexShrink: 0 }}>{clockStr}</div>
         </div>
-        <h1 style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 32, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: 4, color: TEXT }}>
-          {event.name}
-        </h1>
-        <p style={{ fontFamily: 'DM Mono, monospace', color: MUTED, fontSize: 14 }}>{event.date}</p>
-        {event.eventType && (
-          <p style={{ fontFamily: 'Barlow Condensed, sans-serif', color: MUTED2, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>{event.eventType}</p>
-        )}
-        {(event.links || []).length > 0 && (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
+        {(event.links || []).filter(l => l.url).length > 0 && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
             {event.links.map((link, i) => link.url && (
-              <a key={i} href={link.url} target="_blank" rel="noreferrer" style={{
-                padding: '7px 14px', background: ACCENT, color: '#fff',
-                fontFamily: 'Barlow Condensed, sans-serif', fontSize: 13,
-                textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, textDecoration: 'none',
-              }}>
+              <a key={i} href={link.url} target="_blank" rel="noreferrer" style={{ padding: '5px 12px', background: ACCENT, color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, textDecoration: 'none' }}>
                 {link.label || link.url}
               </a>
             ))}
@@ -181,7 +185,7 @@ export default function PublicEventPage() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: `2px solid ${BORDER}`, background: '#192438' }}>
+      <div style={{ display: 'flex', borderBottom: `2px solid ${BORDER}`, background: '#192438', position: 'sticky', top: 0, zIndex: 19 }}>
         {tabs.map(tab => (
           <button
             key={tab.id}
