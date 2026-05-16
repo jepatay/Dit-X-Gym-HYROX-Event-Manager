@@ -409,28 +409,63 @@ function TeamsTab({ eventId, lanes, config }) {
       )}
 
       <div style={{ marginTop: 32, paddingTop: 20, borderTop: '1px solid var(--color-border)' }}>
-        <div style={{ fontSize: 11, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)', marginBottom: 12 }}>Add new time slot</div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          {lastTime && (
-            <>
-              <button onClick={() => { const t = addMinutes(lastTime, 5); setAdding({ time: t, laneIndex: 0 }) }} style={btnSecondary}>+5 min ({addMinutes(lastTime, 5)})</button>
-              <button onClick={() => { const t = addMinutes(lastTime, 10); setAdding({ time: t, laneIndex: 0 }) }} style={btnSecondary}>+10 min ({addMinutes(lastTime, 10)})</button>
-            </>
-          )}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ fontSize: 11, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)', marginBottom: 14 }}>
+          {lastTime ? 'Add next time slot' : 'Add first time slot'}
+        </div>
+
+        {lastTime ? (
+          /* Subsequent slots: +5 / +10 as primary CTAs */
+          <div>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+              {[5, 10].map(mins => {
+                const t = addMinutes(lastTime, mins)
+                return (
+                  <button
+                    key={mins}
+                    onClick={() => setAdding({ time: t, laneIndex: 0 })}
+                    style={{
+                      flex: 1, padding: '14px 10px', background: 'var(--color-surface-raised)',
+                      border: '1px solid var(--color-border)', color: 'var(--color-text)',
+                      cursor: 'pointer', fontFamily: 'var(--font-heading)', textAlign: 'center',
+                    }}
+                  >
+                    <div style={{ fontSize: 20, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>+{mins} min</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--color-accent)', marginTop: 4 }}>{t}</div>
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>or custom:</span>
+              <input
+                type="time"
+                value={newSlotTime}
+                onChange={e => setNewSlotTime(e.target.value)}
+                style={{ padding: '7px 10px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', fontFamily: 'var(--font-mono)', fontSize: 13 }}
+              />
+              <button
+                onClick={() => { if (newSlotTime) { setAdding({ time: newSlotTime, laneIndex: 0 }); setNewSlotTime('') } }}
+                disabled={!newSlotTime}
+                style={{ ...btnPrimary, opacity: newSlotTime ? 1 : 0.5 }}
+              >Add</button>
+            </div>
+          </div>
+        ) : (
+          /* First slot: time picker is the focus */
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <input
+              type="time"
               value={newSlotTime}
               onChange={e => setNewSlotTime(e.target.value)}
-              placeholder="HH:MM"
-              style={{ width: 80, padding: '8px 10px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', fontFamily: 'var(--font-mono)', fontSize: 13 }}
+              style={{ padding: '10px 14px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', fontFamily: 'var(--font-mono)', fontSize: 16, minWidth: 140 }}
             />
             <button
-              onClick={() => { if (newSlotTime.trim()) { setAdding({ time: newSlotTime.trim(), laneIndex: 0 }); setNewSlotTime('') } }}
-              disabled={!newSlotTime.trim()}
-              style={{ ...btnPrimary, opacity: newSlotTime.trim() ? 1 : 0.5 }}
-            >Add slot</button>
+              onClick={() => { if (newSlotTime) { setAdding({ time: newSlotTime, laneIndex: 0 }); setNewSlotTime('') } }}
+              disabled={!newSlotTime}
+              style={{ ...btnPrimary, opacity: newSlotTime ? 1 : 0.5 }}
+            >Add Slot</button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
