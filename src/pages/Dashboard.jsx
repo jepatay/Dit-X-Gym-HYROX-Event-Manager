@@ -151,7 +151,6 @@ export default function Dashboard() {
                     <ActionLink to={`/event/${event.id}/admin`}>Admin</ActionLink>
                     <ActionLink to={`/event/${event.id}/qr`}>QR Code</ActionLink>
                     <ActionLink to={`/event/${event.id}/tv`} external>TV ↗</ActionLink>
-                    <ActionLink to={`/event/${event.id}/start`} external>Start ↗</ActionLink>
                     {event.publicSlug && (
                       <ActionLink to={`/e/${event.publicSlug}`} external>Public ↗</ActionLink>
                     )}
