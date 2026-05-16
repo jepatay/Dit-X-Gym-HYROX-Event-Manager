@@ -148,8 +148,7 @@ export default function Dashboard() {
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                     <ActionLink to={`/event/${event.id}`}>Edit</ActionLink>
                     <ActionLink to={`/event/${event.id}/checkin`}>Check-in</ActionLink>
-                    <ActionLink to={`/event/${event.id}/startlist`}>Start List</ActionLink>
-                    <ActionLink to={`/event/${event.id}/results`}>Results</ActionLink>
+                    <ActionLink to={`/event/${event.id}/admin`}>Admin</ActionLink>
                     <ActionLink to={`/event/${event.id}/qr`}>QR Code</ActionLink>
                     <ActionLink to={`/event/${event.id}/tv`} external>TV ↗</ActionLink>
                     <ActionLink to={`/event/${event.id}/start`} external>Start ↗</ActionLink>
