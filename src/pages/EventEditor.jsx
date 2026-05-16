@@ -439,6 +439,7 @@ function TeamsTab({ eventId, lanes, config }) {
               <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>or custom:</span>
               <input
                 type="time"
+                step="300"
                 value={newSlotTime}
                 onChange={e => setNewSlotTime(e.target.value)}
                 style={{ padding: '7px 10px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', fontFamily: 'var(--font-mono)', fontSize: 13 }}
@@ -455,6 +456,7 @@ function TeamsTab({ eventId, lanes, config }) {
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <input
               type="time"
+              step="300"
               value={newSlotTime}
               onChange={e => setNewSlotTime(e.target.value)}
               style={{ padding: '10px 14px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', fontFamily: 'var(--font-mono)', fontSize: 16, minWidth: 140 }}
