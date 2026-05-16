@@ -9,7 +9,7 @@ const WEIGHT_OPTIONS = [
   { value: 'Pro Weight', label: 'Pro' },
 ]
 
-export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config, onSaved, onCancel }) {
+export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config, eventType, onSaved, onCancel }) {
   const teamRef = generateRef(scheduledTime, laneIndex)
 
   const [name, setName] = useState('')
@@ -55,7 +55,8 @@ export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config
     }
   }
 
-  const categories = (config?.categories || [])
+  const catType = eventType === 'Hybrid' ? 'hybrid' : 'hyrox'
+  const categories = (config?.categories || []).filter(c => (c.eventType || 'hyrox') === catType)
 
   return (
     <div style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', padding: 20, marginBottom: 16 }}>

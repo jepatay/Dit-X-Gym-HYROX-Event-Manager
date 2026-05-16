@@ -146,7 +146,7 @@ export default function EventEditor() {
           />
         )}
         {tab === 1 && (
-          <TeamsTab eventId={eventId} lanes={lanes} config={config} />
+          <TeamsTab eventId={eventId} lanes={lanes} config={config} eventType={eventType} />
         )}
         {tab === 2 && (
           <ChecklistPanel
@@ -302,7 +302,7 @@ function addMinutes(timeStr, mins) {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
-function TeamsTab({ eventId, lanes, config }) {
+function TeamsTab({ eventId, lanes, config, eventType }) {
   const [teams, setTeams] = useState([])
   const [adding, setAdding] = useState(null) // { time, laneIndex }
   const [moving, setMoving] = useState(null) // teamId
@@ -429,6 +429,7 @@ function TeamsTab({ eventId, lanes, config }) {
                 scheduledTime={adding.time}
                 laneIndex={adding.laneIndex || 0}
                 config={config}
+                eventType={eventType}
                 onSaved={(newTeam) => { setTeams(ts => [...ts, newTeam]); setAdding(null) }}
                 onCancel={() => setAdding(null)}
               />
