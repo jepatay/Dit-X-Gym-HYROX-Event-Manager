@@ -44,6 +44,7 @@ export default function CalendarPicker({ value, onChange }) {
   const selMonth = value ? parseInt(value.substring(5, 7)) - 1 : null
   const selYear = value ? parseInt(value.substring(0, 4)) : null
   const isSelected = (day) => selDay === day && selMonth === viewMonth && selYear === viewYear
+  const isToday = (day) => day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear()
 
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -100,6 +101,7 @@ export default function CalendarPicker({ value, onChange }) {
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1
               const selected = isSelected(day)
+              const todayDay = isToday(day)
               return (
                 <button
                   key={day}
@@ -108,10 +110,11 @@ export default function CalendarPicker({ value, onChange }) {
                   style={{
                     padding: '6px 0',
                     background: selected ? 'var(--color-accent)' : 'transparent',
-                    border: 'none',
-                    color: selected ? '#fff' : 'var(--color-text)',
+                    border: todayDay && !selected ? '1px solid var(--color-accent)' : 'none',
+                    color: selected ? '#fff' : todayDay ? 'var(--color-accent)' : 'var(--color-text)',
                     fontFamily: 'var(--font-mono)',
                     fontSize: 13,
+                    fontWeight: todayDay ? 700 : 400,
                     cursor: 'pointer',
                     textAlign: 'center',
                   }}
