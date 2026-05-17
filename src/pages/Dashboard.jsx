@@ -147,12 +147,11 @@ export default function Dashboard() {
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                     <ActionLink to={`/event/${event.id}`}>Edit</ActionLink>
-                    <ActionLink to={`/event/${event.id}/checkin`}>Check-in</ActionLink>
-                    <ActionLink to={`/event/${event.id}/admin`}>Admin</ActionLink>
                     <ActionLink to={`/event/${event.id}/qr`}>QR Code</ActionLink>
-                    <ActionLink to={`/event/${event.id}/tv`} external>TV ↗</ActionLink>
+                    <LinkWithCopy to={`/event/${event.id}/admin`} label="Admin" />
+                    <LinkWithCopy to={`/event/${event.id}/tv`} label="TV ↗" external />
                     {event.publicSlug && (
-                      <ActionLink to={`/e/${event.publicSlug}`} external>Public ↗</ActionLink>
+                      <LinkWithCopy to={`/e/${event.publicSlug}`} label="Public ↗" external />
                     )}
                     <button
                       onClick={() => deleteEvent(event.id, event.name || 'Untitled Event')}
@@ -192,6 +191,62 @@ function ActionLink({ to, children, external }) {
     return <a href={to} target="_blank" rel="noreferrer" style={style}>{children}</a>
   }
   return <Link to={to} style={style}>{children}</Link>
+}
+
+function LinkWithCopy({ to, label, external }) {
+  const [copied, setCopied] = useState(false)
+  const fullUrl = external ? `${window.location.origin}${to}` : `${window.location.origin}${to}`
+
+  function handleCopy(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    navigator.clipboard.writeText(fullUrl).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  const linkStyle = {
+    padding: '6px 10px',
+    border: '1px solid var(--color-border)',
+    color: 'var(--color-text)',
+    fontFamily: 'var(--font-heading)',
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    fontWeight: 600,
+    display: 'inline-block',
+    background: 'transparent',
+    cursor: 'pointer',
+    textDecoration: 'none',
+    whiteSpace: 'nowrap',
+  }
+  const copyBtnStyle = {
+    padding: '6px 8px',
+    border: '1px solid var(--color-border)',
+    borderLeft: 'none',
+    color: copied ? '#22c55e' : 'var(--color-text-muted)',
+    background: 'transparent',
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    verticalAlign: 'middle',
+  }
+
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'stretch', verticalAlign: 'middle' }}>
+      {external
+        ? <a href={to} target="_blank" rel="noreferrer" style={linkStyle}>{label}</a>
+        : <Link to={to} style={linkStyle}>{label}</Link>
+      }
+      <button onClick={handleCopy} style={copyBtnStyle} title="Copy link">
+        {copied
+          ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        }
+      </button>
+    </span>
+  )
 }
 
 const btnPrimary = {

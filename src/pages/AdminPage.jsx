@@ -15,6 +15,24 @@ const MUTED2   = '#5a7090'
 const SUCCESS  = '#22c55e'
 const GOLD     = '#f59e0b'
 
+function timeStrToSecs(hhmm) {
+  if (!hhmm) return Infinity
+  const [h, m] = hhmm.split(':').map(Number)
+  return h * 3600 + m * 60
+}
+
+function formatCountdown(diffSecs) {
+  if (diffSecs <= 0) return null
+  const m = Math.floor(diffSecs / 60)
+  const s = diffSecs % 60
+  if (m >= 60) {
+    const h = Math.floor(m / 60)
+    const rm = m % 60
+    return `${h}h ${String(rm).padStart(2,'0')}m`
+  }
+  return `${m}:${String(s).padStart(2,'0')}`
+}
+
 export default function AdminPage() {
   const { id } = useParams()
   const [event, setEvent] = useState(null)
@@ -57,6 +75,7 @@ export default function AdminPage() {
 
   const clockStr = time.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   const nowHHMM = `${String(time.getHours()).padStart(2,'0')}:${String(time.getMinutes()).padStart(2,'0')}`
+  const nowSecs = time.getHours() * 3600 + time.getMinutes() * 60 + time.getSeconds()
 
   const sortedTeams = [...teams].sort((a, b) =>
     (a.scheduledTime || '').localeCompare(b.scheduledTime || '') || (a.ref || '').localeCompare(b.ref || '')
@@ -85,13 +104,32 @@ export default function AdminPage() {
     setTeams(ts => ts.map(t => t.id === team.id ? { ...t, checkedIn: newVal, checkedInAt: newVal ? new Date().toISOString() : null } : t))
   }
 
+  // --- Start tab: group by scheduledTime, show 15s grace after start ---
+  const startGroups = (() => {
+    const map = {}
+    for (const t of sortedTeams) {
+      const key = t.scheduledTime || ''
+      if (!map[key]) map[key] = []
+      map[key].push(t)
+    }
+    return Object.entries(map)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([slotTime, members]) => {
+        const slotSecs = timeStrToSecs(slotTime)
+        const diffSecs = slotSecs - nowSecs
+        const started = diffSecs <= 0
+        const graceOver = diffSecs < -15
+        return { slotTime, members, diffSecs, started, graceOver }
+      })
+      .filter(g => !g.graceOver || g.diffSecs > -15)
+  })()
+
   // --- Results tab ---
   const startedTeams = sortedTeams.filter(t => (t.scheduledTime || '99:99') <= nowHHMM)
 
   function captureNow(team) {
     const [sh, sm] = (team.scheduledTime || '00:00').split(':').map(Number)
     const startSecs = sh * 3600 + sm * 60
-    const nowSecs = time.getHours() * 3600 + time.getMinutes() * 60 + time.getSeconds()
     const elapsed = Math.max(0, nowSecs - startSecs)
     const str = secondsToHHMMSS(elapsed)
     setTimeInputs(prev => ({ ...prev, [team.id]: str }))
@@ -116,6 +154,8 @@ export default function AdminPage() {
     return team.finishTimeSeconds != null ? secondsToHHMMSS(team.finishTimeSeconds) : ''
   }
 
+  const TABS = ['Check-In', 'Start', 'Results']
+
   return (
     <div style={{ background: BG, color: TEXT, minHeight: '100vh', fontFamily: 'Inter, sans-serif', maxWidth: 620, margin: '0 auto' }}>
 
@@ -132,7 +172,7 @@ export default function AdminPage() {
 
       {/* Sticky tabs */}
       <div style={{ display: 'flex', borderBottom: `2px solid ${BORDER}`, background: '#192438', position: 'sticky', top: 68, zIndex: 19 }}>
-        {['Check-In', 'Results'].map((label, i) => (
+        {TABS.map((label, i) => (
           <button
             key={i}
             onClick={() => setTab(i)}
@@ -184,8 +224,69 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* ── Results Tab ── */}
+      {/* ── Start Tab ── */}
       {tab === 1 && (
+        <div>
+          {startGroups.length === 0 && (
+            <p style={{ padding: '32px 16px', color: MUTED2, textAlign: 'center' }}>No groups scheduled</p>
+          )}
+          {startGroups.map(({ slotTime, members, diffSecs, started }) => {
+            const countdown = formatCountdown(diffSecs)
+            return (
+              <div key={slotTime} style={{ marginBottom: 0 }}>
+                {/* Group header */}
+                <div style={{
+                  padding: '10px 16px',
+                  background: started ? 'rgba(34,197,94,0.08)' : SURFACE2,
+                  borderTop: `2px solid ${started ? SUCCESS : BORDER}`,
+                  borderBottom: `1px solid ${started ? SUCCESS + '55' : BORDER}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 20, color: started ? SUCCESS : TEXT }}>{slotTime}</span>
+                    <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: MUTED2 }}>{members.length} athlete{members.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  {started ? (
+                    <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: SUCCESS }}>Started ✓</span>
+                  ) : countdown ? (
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 22, color: diffSecs < 120 ? ACCENT : TEXT, lineHeight: 1 }}>{countdown}</div>
+                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 10, color: MUTED2, textTransform: 'uppercase', letterSpacing: '0.08em' }}>to start</div>
+                    </div>
+                  ) : null}
+                </div>
+                {/* Members */}
+                {members.map(team => (
+                  <div key={team.id} style={{
+                    borderBottom: `1px solid ${BORDER}`,
+                    padding: '10px 16px',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    opacity: started ? 0.6 : 1,
+                    background: team.checkedIn ? 'rgba(34,197,94,0.04)' : 'transparent',
+                  }}>
+                    <span style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 14, flexShrink: 0, minWidth: 52 }}>{team.ref || `#${team.bibNumber}`}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{team.name}</div>
+                      {team.competitionName && <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{team.competitionName}</div>}
+                      {team.weight && <div style={{ fontSize: 11, color: GOLD, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{team.weight}</div>}
+                      <div style={{ fontSize: 12, color: MUTED2, marginTop: 2 }}>
+                        {team.athlete1?.firstName} {team.athlete1?.lastName}
+                        {team.athlete2?.firstName && ` / ${team.athlete2.firstName}`}
+                      </div>
+                    </div>
+                    {team.checkedIn && (
+                      <div style={{ width: 22, height: 22, background: SUCCESS, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── Results Tab ── */}
+      {tab === 2 && (
         <div>
           <SectionHeader>Started athletes — tap to record finish time</SectionHeader>
           {startedTeams.length === 0 && (
@@ -195,6 +296,7 @@ export default function AdminPage() {
             const val = getInput(team)
             const isSaving = saving[team.id]
             const hasTime = team.finishTimeSeconds != null
+            const inputHasValue = val.trim().length > 0
             return (
               <div key={team.id} style={{ borderBottom: `1px solid ${BORDER}`, padding: '12px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
@@ -210,14 +312,16 @@ export default function AdminPage() {
                   <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: MUTED2, flexShrink: 0 }}>Start: {team.scheduledTime}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button
-                    onClick={() => captureNow(team)}
-                    style={{
-                      padding: '10px 16px', background: ACCENT, color: '#fff', border: 'none',
-                      fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, fontWeight: 700,
-                      textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', flexShrink: 0,
-                    }}
-                  >NOW</button>
+                  {!inputHasValue && (
+                    <button
+                      onClick={() => captureNow(team)}
+                      style={{
+                        padding: '10px 16px', background: ACCENT, color: '#fff', border: 'none',
+                        fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, fontWeight: 700,
+                        textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', flexShrink: 0,
+                      }}
+                    >NOW</button>
+                  )}
                   <div style={{ flex: 1, position: 'relative' }}>
                     <input
                       value={val}
