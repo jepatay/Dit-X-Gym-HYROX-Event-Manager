@@ -140,10 +140,41 @@ export default function PublicEventPage() {
 
   const selectedStaff = (config?.staff || []).filter(s => (event.selectedStaffIds || []).includes(s.id))
 
-  // Flat start list sorted by time
+  // Start list grouped by wave
   const sortedTeams = [...teams].sort((a, b) =>
     (a.scheduledTime || '').localeCompare(b.scheduledTime || '') || (a.ref || '').localeCompare(b.ref || '')
   )
+
+  const startGroups = (() => {
+    const map = {}
+    for (const t of sortedTeams) {
+      const key = t.scheduledTime || ''
+      if (!map[key]) map[key] = []
+      map[key].push(t)
+    }
+    return Object.entries(map)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([slotTime, members]) => {
+        const slotMs = event?.date && slotTime
+          ? new Date(`${event.date}T${slotTime}:00`).getTime()
+          : null
+        const diffSecs = slotMs != null ? (slotMs - time.getTime()) / 1000 : Infinity
+        const started = diffSecs <= 0
+        const graceOver = diffSecs < -15
+        return { slotTime, members, diffSecs, started, graceOver }
+      })
+      .filter(g => !g.graceOver)
+  })()
+
+  function formatCountdown(diffSecs) {
+    if (!isFinite(diffSecs) || diffSecs <= 0) return null
+    const total = Math.floor(diffSecs)
+    const h = Math.floor(total / 3600)
+    const m = Math.floor((total % 3600) / 60)
+    const s = total % 60
+    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+  }
 
   const tabs = [
     { id: 'startlist', label: 'Start List' },
@@ -207,37 +238,65 @@ export default function PublicEventPage() {
       {/* ── Start List Tab ── */}
       {activeTab === 'startlist' && (
         <Section title="Start List">
-          {sortedTeams.length === 0 && (
+          {startGroups.length === 0 && (
             <p style={{ padding: '24px 20px', color: MUTED2, fontFamily: 'DM Mono, monospace', fontSize: 13 }}>No athletes registered yet</p>
           )}
-          {sortedTeams.map(team => (
-            <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', borderBottom: `1px solid ${BORDER2}`, gap: 12 }}>
-              <div style={{ minWidth: 56, flexShrink: 0 }}>
-                <div style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 16 }}>{team.ref || team.bibNumber}</div>
-                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: MUTED2 }}>{team.scheduledTime}</div>
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 15, color: TEXT }}>{team.name}</div>
-                {team.competitionName && (
-                  <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>{team.competitionName}</div>
-                )}
-                {team.weight && (
-                  <div style={{ fontSize: 11, color: '#f59e0b', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{team.weight}</div>
-                )}
-                <div style={{ fontSize: 12, color: MUTED2, marginTop: 2 }}>
-                  {team.athlete1?.firstName} {team.athlete1?.lastName}
-                  {team.athlete2?.firstName && <> / {team.athlete2.firstName} {team.athlete2.lastName}</>}
+          {startGroups.map(({ slotTime, members, diffSecs, started }) => {
+            const countdown = formatCountdown(diffSecs)
+            return (
+              <div key={slotTime}>
+                {/* Wave header */}
+                <div style={{
+                  padding: '10px 20px',
+                  background: started ? 'rgba(34,197,94,0.08)' : SURFACE2,
+                  borderTop: `2px solid ${started ? '#22c55e' : BORDER}`,
+                  borderBottom: `1px solid ${started ? '#22c55e55' : BORDER}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 20, color: started ? '#22c55e' : TEXT }}>{slotTime}</span>
+                    <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: MUTED2 }}>{members.length} team{members.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  {started ? (
+                    <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#22c55e' }}>Started ✓</span>
+                  ) : countdown ? (
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 22, color: diffSecs < 120 ? ACCENT : TEXT, lineHeight: 1 }}>{countdown}</div>
+                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 10, color: MUTED2, textTransform: 'uppercase', letterSpacing: '0.08em' }}>to start</div>
+                    </div>
+                  ) : null}
                 </div>
+                {/* Members */}
+                {members.map(team => (
+                  <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', borderBottom: `1px solid ${BORDER2}`, gap: 12, opacity: started ? 0.65 : 1 }}>
+                    <div style={{ minWidth: 56, flexShrink: 0 }}>
+                      <div style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 15 }}>{team.ref || team.bibNumber}</div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 15, color: TEXT }}>{team.name}</div>
+                      {team.competitionName && (
+                        <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>{team.competitionName}</div>
+                      )}
+                      {team.weight && (
+                        <div style={{ fontSize: 11, color: '#f59e0b', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{team.weight}</div>
+                      )}
+                      <div style={{ fontSize: 12, color: MUTED2, marginTop: 2 }}>
+                        {team.athlete1?.firstName} {team.athlete1?.lastName}
+                        {team.athlete2?.firstName && <> / {team.athlete2.firstName} {team.athlete2.lastName}</>}
+                      </div>
+                    </div>
+                    <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                      {team.finishTimeSeconds != null ? (
+                        <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 14, color: '#22c55e', fontWeight: 700 }}>{secondsToHHMMSS(team.finishTimeSeconds)}</div>
+                      ) : team.checkedIn ? (
+                        <span style={{ fontSize: 11, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#22c55e', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', padding: '3px 8px' }}>✓ IN</span>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                {team.finishTimeSeconds != null ? (
-                  <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 14, color: '#22c55e', fontWeight: 700 }}>{secondsToHHMMSS(team.finishTimeSeconds)}</div>
-                ) : team.checkedIn ? (
-                  <span style={{ fontSize: 11, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#22c55e', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', padding: '3px 8px' }}>✓ In</span>
-                ) : null}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </Section>
       )}
 

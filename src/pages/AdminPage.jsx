@@ -285,7 +285,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                     {team.checkedIn && (
-                      <div style={{ width: 22, height: 22, background: SUCCESS, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</div>
+                      <span style={{ fontSize: 11, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: SUCCESS, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', padding: '3px 8px', flexShrink: 0 }}>✓ IN</span>
                     )}
                   </div>
                 ))}
@@ -399,9 +399,10 @@ function CheckInRow({ team, checked, onToggle }) {
           {team.athlete2?.firstName && ` / ${team.athlete2.firstName}`}
         </div>
       </div>
-      <div style={{ width: 28, height: 28, border: `2px solid ${checked ? SUCCESS : BORDER}`, background: checked ? SUCCESS : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#fff', fontSize: 16 }}>
-        {checked ? '✓' : ''}
-      </div>
+      {checked
+        ? <span style={{ fontSize: 11, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: SUCCESS, background: 'rgba(34,197,94,0.12)', border: `1px solid rgba(34,197,94,0.3)`, padding: '3px 8px', flexShrink: 0 }}>✓ IN</span>
+        : <div style={{ width: 28, height: 28, border: `2px solid ${BORDER}`, flexShrink: 0 }} />
+      }
     </div>
   )
 }
