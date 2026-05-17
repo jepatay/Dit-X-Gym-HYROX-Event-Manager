@@ -88,7 +88,11 @@ export default function AdminPage() {
   const startedTeams = sortedTeams.filter(t => (t.scheduledTime || '99:99') <= nowHHMM)
 
   function captureNow(team) {
-    const str = `${String(time.getHours()).padStart(2,'0')}:${String(time.getMinutes()).padStart(2,'0')}:${String(time.getSeconds()).padStart(2,'0')}`
+    const [sh, sm] = (team.scheduledTime || '00:00').split(':').map(Number)
+    const startSecs = sh * 3600 + sm * 60
+    const nowSecs = time.getHours() * 3600 + time.getMinutes() * 60 + time.getSeconds()
+    const elapsed = Math.max(0, nowSecs - startSecs)
+    const str = secondsToHHMMSS(elapsed)
     setTimeInputs(prev => ({ ...prev, [team.id]: str }))
     saveTime(team, str)
   }
