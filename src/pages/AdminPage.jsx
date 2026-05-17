@@ -24,6 +24,7 @@ export default function AdminPage() {
   const [search, setSearch] = useState('')
   const [timeInputs, setTimeInputs] = useState({})
   const [saving, setSaving] = useState({})
+  const [justSaved, setJustSaved] = useState({})
 
   useEffect(() => {
     async function freshLoad() {
@@ -103,6 +104,8 @@ export default function AdminPage() {
     try {
       await updateDoc(doc(db, 'teams', team.id), { finishTimeSeconds: parsed ?? null })
       setTeams(ts => ts.map(t => t.id === team.id ? { ...t, finishTimeSeconds: parsed ?? null } : t))
+      setJustSaved(s => ({ ...s, [team.id]: true }))
+      setTimeout(() => setJustSaved(s => ({ ...s, [team.id]: false })), 2000)
     } finally {
       setSaving(s => ({ ...s, [team.id]: false }))
     }
@@ -215,15 +218,19 @@ export default function AdminPage() {
                       textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', flexShrink: 0,
                     }}
                   >NOW</button>
-                  <input
-                    value={val}
-                    onChange={e => setTimeInputs(prev => ({ ...prev, [team.id]: e.target.value }))}
-                    onBlur={e => saveTime(team, e.target.value)}
-                    placeholder="HH:MM:SS"
-                    style={{ flex: 1, padding: '10px 12px', background: SURFACE, border: `1px solid ${hasTime ? SUCCESS : BORDER}`, color: hasTime ? SUCCESS : TEXT, fontFamily: 'DM Mono, monospace', fontSize: 15, fontWeight: hasTime ? 700 : 400 }}
-                  />
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <input
+                      value={val}
+                      onChange={e => setTimeInputs(prev => ({ ...prev, [team.id]: e.target.value }))}
+                      onBlur={e => saveTime(team, e.target.value)}
+                      placeholder="HH:MM:SS"
+                      style={{ width: '100%', padding: '10px 12px', paddingRight: justSaved[team.id] ? 36 : 12, background: SURFACE, border: `1px solid ${hasTime ? SUCCESS : BORDER}`, color: hasTime ? SUCCESS : TEXT, fontFamily: 'DM Mono, monospace', fontSize: 15, fontWeight: hasTime ? 700 : 400, boxSizing: 'border-box' }}
+                    />
+                    {justSaved[team.id] && (
+                      <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: SUCCESS, fontSize: 18, fontWeight: 700, pointerEvents: 'none' }}>✓</span>
+                    )}
+                  </div>
                   {isSaving && <span style={{ fontSize: 12, color: MUTED2, flexShrink: 0 }}>Saving...</span>}
-                  {!isSaving && hasTime && <span style={{ fontSize: 12, color: SUCCESS, flexShrink: 0 }}>✓</span>}
                 </div>
               </div>
             )
