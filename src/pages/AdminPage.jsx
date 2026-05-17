@@ -116,19 +116,26 @@ export default function AdminPage() {
     return Object.entries(map)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([slotTime, members]) => {
-        const slotSecs = timeStrToSecs(slotTime)
-        const diffSecs = isEventToday ? slotSecs - nowSecs : Infinity
-        const started = isEventToday && diffSecs <= 0
-        const graceOver = isEventToday && diffSecs < -15
+        // Use full date+time so countdown works on any day, not just today
+        const slotMs = event?.date && slotTime
+          ? new Date(`${event.date}T${slotTime}:00`).getTime()
+          : null
+        const diffSecs = slotMs != null ? (slotMs - time.getTime()) / 1000 : Infinity
+        const started = diffSecs <= 0
+        const graceOver = diffSecs < -15
         return { slotTime, members, diffSecs, started, graceOver }
       })
       .filter(g => !g.graceOver)
   })()
 
   // --- Results tab ---
-  const startedTeams = isEventToday
-    ? sortedTeams.filter(t => (t.scheduledTime || '99:99') <= nowHHMM)
-    : []
+  const startedTeams = (() => {
+    if (!event?.date) return []
+    return sortedTeams.filter(t => {
+      if (!t.scheduledTime) return false
+      return new Date(`${event.date}T${t.scheduledTime}:00`).getTime() <= time.getTime()
+    })
+  })()
 
   function captureNow(team) {
     const [sh, sm] = (team.scheduledTime || '00:00').split(':').map(Number)
