@@ -7,6 +7,7 @@ const WEIGHT_OPTIONS = [
   { value: 'Women Weight', label: 'Women' },
   { value: 'Men Weight', label: 'Men' },
   { value: 'Pro Weight', label: 'Pro' },
+  { value: 'Family Weight', label: 'Family' },
 ]
 
 export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config, eventType, onSaved, onCancel }) {
