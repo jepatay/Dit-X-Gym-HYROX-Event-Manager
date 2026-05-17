@@ -22,15 +22,13 @@ function timeStrToSecs(hhmm) {
 }
 
 function formatCountdown(diffSecs) {
-  if (diffSecs <= 0) return null
-  const m = Math.floor(diffSecs / 60)
-  const s = diffSecs % 60
-  if (m >= 60) {
-    const h = Math.floor(m / 60)
-    const rm = m % 60
-    return `${h}h ${String(rm).padStart(2,'0')}m`
-  }
-  return `${m}:${String(s).padStart(2,'0')}`
+  if (!isFinite(diffSecs) || diffSecs <= 0) return null
+  const total = Math.floor(diffSecs)
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
 }
 
 export default function AdminPage() {
@@ -249,7 +247,7 @@ export default function AdminPage() {
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 20, color: started ? SUCCESS : TEXT }}>{slotTime}</span>
-                    <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: MUTED2 }}>{members.length} athlete{members.length !== 1 ? 's' : ''}</span>
+                    <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: MUTED2 }}>{members.length} team{members.length !== 1 ? 's' : ''}</span>
                   </div>
                   {started ? (
                     <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: SUCCESS }}>Started ✓</span>
