@@ -105,6 +105,9 @@ export default function AdminPage() {
   }
 
   // --- Start tab: group by scheduledTime, show 15s grace after start ---
+  // Time comparisons are only valid on the actual event day — on other days treat all slots as future.
+  const isEventToday = event?.date === new Date().toISOString().substring(0, 10)
+
   const startGroups = (() => {
     const map = {}
     for (const t of sortedTeams) {
@@ -116,16 +119,18 @@ export default function AdminPage() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([slotTime, members]) => {
         const slotSecs = timeStrToSecs(slotTime)
-        const diffSecs = slotSecs - nowSecs
-        const started = diffSecs <= 0
-        const graceOver = diffSecs < -15
+        const diffSecs = isEventToday ? slotSecs - nowSecs : Infinity
+        const started = isEventToday && diffSecs <= 0
+        const graceOver = isEventToday && diffSecs < -15
         return { slotTime, members, diffSecs, started, graceOver }
       })
-      .filter(g => !g.graceOver || g.diffSecs > -15)
+      .filter(g => !g.graceOver)
   })()
 
   // --- Results tab ---
-  const startedTeams = sortedTeams.filter(t => (t.scheduledTime || '99:99') <= nowHHMM)
+  const startedTeams = isEventToday
+    ? sortedTeams.filter(t => (t.scheduledTime || '99:99') <= nowHHMM)
+    : []
 
   function captureNow(team) {
     const [sh, sm] = (team.scheduledTime || '00:00').split(':').map(Number)
