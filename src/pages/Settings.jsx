@@ -8,7 +8,7 @@ import NavBar from '../components/NavBar'
 import SaveConfirmation from '../components/SaveConfirmation'
 import { DEFAULT_CONFIG, getOrCreateConfig, buildDefaultStations } from '../utils/firestoreUtils'
 
-const TABS = ['Categories', 'Stations', 'Checklist', 'Staff', 'Admin Users']
+const TABS = ['Categories', 'Stations', 'Checklist', 'Staff', 'Admin Users', 'Pictures']
 
 export default function Settings() {
   const [tab, setTab] = useState(0)
@@ -64,6 +64,7 @@ export default function Settings() {
         {tab === 2 && <ChecklistTab config={config} onSave={saveConfig} saved={saved} />}
         {tab === 3 && <StaffTab config={config} onSave={saveConfig} saved={saved} />}
         {tab === 4 && <AdminUsersTab />}
+        {tab === 5 && <PicturesTab config={config} onSave={saveConfig} />}
       </div>
     </div>
   )
@@ -442,6 +443,71 @@ function AdminUsersTab() {
           {creating ? 'Creating...' : 'Create User'}
         </button>
       </div>
+    </div>
+  )
+}
+
+function PicturesTab({ config, onSave }) {
+  const fileRef = useRef()
+  const [uploading, setUploading] = useState(false)
+  const [nameInput, setNameInput] = useState('')
+  const pictures = config?.pictures || []
+
+  async function handleUpload(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const id = `pic_${Date.now()}`
+      const storageRef = ref(storage, `pictures/${id}-${file.name}`)
+      await uploadBytes(storageRef, file)
+      const url = await getDownloadURL(storageRef)
+      const name = nameInput.trim() || file.name
+      await onSave({ ...config, pictures: [...pictures, { id, name, url }] })
+      setNameInput('')
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
+
+  async function deletePicture(picId) {
+    if (!confirm('Remove this picture from the library?')) return
+    await onSave({ ...config, pictures: pictures.filter(p => p.id !== picId) })
+  }
+
+  return (
+    <div>
+      <p style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 20 }}>
+        Upload pictures to the shared library. Select them in each event's Event Setup tab (Maps section).
+      </p>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 24, flexWrap: 'wrap' }}>
+        <input
+          value={nameInput}
+          onChange={e => setNameInput(e.target.value)}
+          placeholder="Optional label..."
+          style={{ ...inputStyle, width: 200 }}
+        />
+        <button onClick={() => fileRef.current.click()} disabled={uploading} style={btnSecondary}>
+          {uploading ? 'Uploading...' : '+ Upload Picture'}
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} />
+      </div>
+      {pictures.length === 0 ? (
+        <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No pictures yet.</p>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+          {pictures.map(pic => (
+            <div key={pic.id} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+              <img src={pic.url} alt={pic.name} style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />
+              <div style={{ padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{pic.name}</span>
+                <button onClick={() => deletePicture(pic.id)} style={iconBtnRed}>✕</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

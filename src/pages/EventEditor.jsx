@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   doc, getDoc, setDoc, collection, getDocs, query, where,
   addDoc, serverTimestamp, deleteDoc, updateDoc,
 } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { db, storage } from '../firebase'
+import { db } from '../firebase'
 import NavBar from '../components/NavBar'
 import CalendarPicker from '../components/CalendarPicker'
 import ChecklistPanel from '../components/ChecklistPanel'
@@ -499,23 +498,20 @@ function TeamsTab({ eventId, lanes, config, eventType }) {
 }
 
 function EventSetupTab({ maps, setMaps, selectedStaffIds, setSelectedStaffIds, weightOverrides, setWeightOverrides, config, onSave, saved, eventId }) {
-  const gymRef = useRef()
-  const runRef = useRef()
-  const [uploading, setUploading] = useState({})
+  const [pickerOpen, setPickerOpen] = useState(null) // 'gymLayout' | 'runRoute' | null
 
-  async function uploadMap(type, file) {
-    if (!file) return
-    setUploading(u => ({ ...u, [type]: true }))
-    try {
-      const storageRef = ref(storage, `maps/${eventId}/${type}-${Date.now()}-${file.name}`)
-      await uploadBytes(storageRef, file)
-      const url = await getDownloadURL(storageRef)
-      setMaps(m => ({ ...m, [type]: url }))
-      if (eventId) {
-        await updateDoc(doc(db, 'events', eventId), { [`maps.${type}`]: url })
-      }
-    } finally {
-      setUploading(u => ({ ...u, [type]: false }))
+  async function selectMap(type, url) {
+    setMaps(m => ({ ...m, [type]: url }))
+    setPickerOpen(null)
+    if (eventId) {
+      await updateDoc(doc(db, 'events', eventId), { [`maps.${type}`]: url })
+    }
+  }
+
+  async function clearMap(type) {
+    setMaps(m => ({ ...m, [type]: null }))
+    if (eventId) {
+      await updateDoc(doc(db, 'events', eventId), { [`maps.${type}`]: null })
     }
   }
 
@@ -523,28 +519,38 @@ function EventSetupTab({ maps, setMaps, selectedStaffIds, setSelectedStaffIds, w
     setSelectedStaffIds(ids => ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id])
   }
 
+  const pictures = config?.pictures || []
+
   return (
     <div>
       <Section title="Maps">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 8 }}>
-          <MapUpload
+          <MapPicker
             label="Gym Layout"
             url={maps.gymLayout}
-            uploading={uploading.gymLayout}
-            fileRef={gymRef}
-            onFile={f => uploadMap('gymLayout', f)}
+            onChoose={() => setPickerOpen('gymLayout')}
+            onClear={() => clearMap('gymLayout')}
           />
-          <MapUpload
+          <MapPicker
             label="Run Route"
             url={maps.runRoute}
-            uploading={uploading.runRoute}
-            fileRef={runRef}
-            onFile={f => uploadMap('runRoute', f)}
+            onChoose={() => setPickerOpen('runRoute')}
+            onClear={() => clearMap('runRoute')}
           />
         </div>
-        <input ref={gymRef} type="file" accept="image/*" onChange={e => uploadMap('gymLayout', e.target.files[0])} style={{ display: 'none' }} />
-        <input ref={runRef} type="file" accept="image/*" onChange={e => uploadMap('runRoute', e.target.files[0])} style={{ display: 'none' }} />
+        {pictures.length === 0 && (
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 8 }}>
+            No pictures in library yet. Add them in <a href="/settings" style={{ color: 'var(--color-accent)' }}>Settings → Pictures</a>.
+          </p>
+        )}
       </Section>
+      {pickerOpen && (
+        <PictureLibraryModal
+          pictures={pictures}
+          onSelect={url => selectMap(pickerOpen, url)}
+          onClose={() => setPickerOpen(null)}
+        />
+      )}
 
       <Section title={`Staff (${selectedStaffIds.length} selected)`}>
         {(config?.staff || []).length === 0 ? (
@@ -607,7 +613,7 @@ function EventSetupTab({ maps, setMaps, selectedStaffIds, setSelectedStaffIds, w
   )
 }
 
-function MapUpload({ label, url, uploading, fileRef, onFile }) {
+function MapPicker({ label, url, onChoose, onClear }) {
   return (
     <div>
       <div style={{ fontSize: 11, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)', marginBottom: 8 }}>
@@ -615,32 +621,67 @@ function MapUpload({ label, url, uploading, fileRef, onFile }) {
       </div>
       {url ? (
         <div>
-          <img src={url} alt={label} style={{ width: '100%', maxHeight: 200, objectFit: 'cover', marginBottom: 8 }} />
-          <button type="button" onClick={() => fileRef.current.click()} style={btnSecondary} disabled={uploading}>
-            {uploading ? 'Uploading...' : 'Replace'}
-          </button>
+          <img src={url} alt={label} style={{ width: '100%', maxHeight: 200, objectFit: 'cover', marginBottom: 8, display: 'block' }} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" onClick={onChoose} style={btnSecondary}>Change</button>
+            <button type="button" onClick={onClear} style={btnSecondary}>Remove</button>
+          </div>
         </div>
       ) : (
         <button
           type="button"
-          onClick={() => fileRef.current.click()}
-          disabled={uploading}
+          onClick={onChoose}
           style={{
-            width: '100%',
-            height: 120,
+            width: '100%', height: 120,
             background: 'var(--color-surface-raised)',
             border: '2px dashed var(--color-border)',
             color: 'var(--color-text-muted)',
-            fontFamily: 'var(--font-heading)',
-            fontSize: 13,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            cursor: 'pointer',
+            fontFamily: 'var(--font-heading)', fontSize: 13,
+            textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer',
           }}
         >
-          {uploading ? 'Uploading...' : '+ Upload Image'}
+          Choose from Library
         </button>
       )}
+    </div>
+  )
+}
+
+function PictureLibraryModal({ pictures, onSelect, onClose }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', width: '100%', maxWidth: 720, maxHeight: '80vh', overflow: 'auto', padding: 24 }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Choose from Library</h3>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>✕</button>
+        </div>
+        {pictures.length === 0 ? (
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>
+            No pictures yet. Go to <a href="/settings" style={{ color: 'var(--color-accent)' }}>Settings → Pictures</a> to upload some.
+          </p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+            {pictures.map(pic => (
+              <div
+                key={pic.id}
+                onClick={() => onSelect(pic.url)}
+                style={{ cursor: 'pointer', border: '2px solid var(--color-border)', overflow: 'hidden', transition: 'border-color 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-accent)'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border)'}
+              >
+                <img src={pic.url} alt={pic.name} style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
+                <div style={{ padding: '6px 10px', fontSize: 12, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pic.name}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
