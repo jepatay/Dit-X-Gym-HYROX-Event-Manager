@@ -372,6 +372,18 @@ function TeamsTab({ eventId, lanes, config, eventType }) {
         const emptyLanes = Math.max(0, effectiveLanes - slotTeams.length)
         const isAddingHere = adding?.time === time
 
+        // Find which lane indices (0=A, 1=B, …) are already occupied in this slot
+        const usedIndices = new Set(slotTeams.map(t => {
+          const last = (t.ref || '').slice(-1).toUpperCase()
+          const idx = last.charCodeAt(0) - 65
+          return idx >= 0 ? idx : -1
+        }))
+        // Build the list of free indices for the empty-lane buttons
+        const freeIndices = []
+        for (let idx = 0; freeIndices.length < emptyLanes + 4; idx++) {
+          if (!usedIndices.has(idx)) freeIndices.push(idx)
+        }
+
         return (
           <div key={time}>
             <div style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--color-border)', alignItems: 'stretch', minHeight: 60 }}>
@@ -417,7 +429,7 @@ function TeamsTab({ eventId, lanes, config, eventType }) {
               {Array.from({ length: emptyLanes }, (_, i) => (
                 <button
                   key={i}
-                  onClick={() => setAdding(isAddingHere && adding?.laneIndex === slotTeams.length + i ? null : { time, laneIndex: slotTeams.length + i })}
+                  onClick={() => setAdding(isAddingHere && adding?.laneIndex === freeIndices[i] ? null : { time, laneIndex: freeIndices[i] })}
                   style={{ flex: 1, background: 'transparent', border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '8px', fontSize: 12, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >+ Add</button>
               ))}
