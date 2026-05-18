@@ -4,7 +4,7 @@ import { collection, onSnapshot, query, where, doc, getDocFromServer, getDocsFro
 import { QRCodeSVG } from 'qrcode.react'
 import { db } from '../firebase'
 import { secondsToHHMMSS } from '../utils/timeUtils'
-import { WeightDot } from '../utils/weightUtils'
+import { WeightLabel } from '../utils/weightUtils'
 
 const BG      = '#0f1923'
 const SURFACE = '#1e2d45'
@@ -21,11 +21,19 @@ const SILVER  = '#9ca3af'
 const BRONZE  = '#b45309'
 
 function catLabel(team, config) {
-  if (team.categoryId && config?.categories) {
-    const cat = config.categories.find(c => c.id === team.categoryId)
+  const cats = config?.categories
+  if (!cats) return team.competitionName || ''
+  if (team.categoryId) {
+    const cat = cats.find(c => c.id === team.categoryId)
     if (cat) return cat.label
   }
-  return team.competitionName || ''
+  const norm = s => (s || '').replace(/[^\w\s]/gu, '').toLowerCase().trim()
+  const stored = norm(team.competitionName)
+  if (stored) {
+    const cat = cats.find(c => norm(c.label) === stored)
+    if (cat) return cat.label
+  }
+  return (team.competitionName || '').replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').replace(/\s+/g, ' ').trim()
 }
 
 export default function TVDisplay() {
@@ -167,10 +175,8 @@ export default function TVDisplay() {
                 <Cell w={48} muted mono size={12}>{team.scheduledTime}</Cell>
                 <Cell flex>
                   <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{team.name}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', marginTop: 1 }}>
-                    {catLabel(team, config) && <span style={{ fontSize: 10, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{catLabel(team, config)}</span>}
-                    <WeightDot weight={team.weight} size={8} />
-                  </div>
+                  {catLabel(team, config) && <div style={{ fontSize: 10, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{catLabel(team, config)}</div>}
+                  <WeightLabel weight={team.weight} />
                   <div style={{ fontSize: 11, color: MUTED2, marginTop: 1 }}>
                     {team.athlete1?.firstName} {team.athlete1?.lastName}
                     {team.athlete2?.firstName && ` / ${team.athlete2.firstName}`}

@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { secondsToHHMMSS } from '../utils/timeUtils'
-import { WeightDot } from '../utils/weightUtils'
+import { WeightLabel } from '../utils/weightUtils'
 
 const CACHE_KEY = (slug) => `ditxgym_event_${slug}`
 
@@ -42,11 +42,19 @@ const HYBRID_STATION_ORDER = [
 ]
 
 function catLabel(team, config) {
-  if (team.categoryId && config?.categories) {
-    const cat = config.categories.find(c => c.id === team.categoryId)
+  const cats = config?.categories
+  if (!cats) return team.competitionName || ''
+  if (team.categoryId) {
+    const cat = cats.find(c => c.id === team.categoryId)
     if (cat) return cat.label
   }
-  return team.competitionName || ''
+  const norm = s => (s || '').replace(/[^\w\s]/gu, '').toLowerCase().trim()
+  const stored = norm(team.competitionName)
+  if (stored) {
+    const cat = cats.find(c => norm(c.label) === stored)
+    if (cat) return cat.label
+  }
+  return (team.competitionName || '').replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').replace(/\s+/g, ' ').trim()
 }
 
 function deriveStatus(eventDate) {
@@ -283,12 +291,8 @@ export default function PublicEventPage() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 15, color: TEXT }}>{team.name}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', marginTop: 2 }}>
-                        {catLabel(team, config) && (
-                          <span style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{catLabel(team, config)}</span>
-                        )}
-                        <WeightDot weight={team.weight} />
-                      </div>
+                      {catLabel(team, config) && <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>{catLabel(team, config)}</div>}
+                      <WeightLabel weight={team.weight} />
                       <div style={{ fontSize: 12, color: MUTED2, marginTop: 2 }}>
                         {team.athlete1?.firstName} {team.athlete1?.lastName}
                         {team.athlete2?.firstName && <> / {team.athlete2.firstName} {team.athlete2.lastName}</>}
