@@ -20,7 +20,7 @@ export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config
   const savingRef = useRef(false)
 
   async function handleSave() {
-    if (!name.trim() || savingRef.current) return
+    if (!name.trim() || !weight || savingRef.current) return
     savingRef.current = true
     setSaving(true)
     try {
@@ -80,27 +80,35 @@ export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config
             {categories.map(c => <option key={c.id} value={c.label} />)}
           </datalist>
         </div>
-        <div>
-          <Label>Weight</Label>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {WEIGHT_OPTIONS.map(opt => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setWeight(weight === opt.value ? '' : opt.value)}
-                style={{
-                  padding: '6px 10px',
-                  background: weight === opt.value ? weightColor(opt.value) : 'transparent',
-                  border: `1px solid ${weight === opt.value ? weightColor(opt.value) : 'var(--color-border)'}`,
-                  color: weight === opt.value ? '#fff' : 'var(--color-text-muted)',
-                  fontFamily: 'var(--font-heading)',
-                  fontSize: 11,
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                }}
-              >{opt.label}</button>
-            ))}
+        <div style={{ gridColumn: '1 / -1' }}>
+          <Label>Weight <span style={{ color: 'var(--color-accent)', fontSize: 11 }}>*required</span></Label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+            {WEIGHT_OPTIONS.map(opt => {
+              const color = weightColor(opt.value)
+              const active = weight === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setWeight(active ? '' : opt.value)}
+                  style={{
+                    padding: '10px 16px',
+                    background: active ? color : 'var(--color-bg)',
+                    border: `2px solid ${active ? color : color + '55'}`,
+                    color: active ? '#fff' : color,
+                    fontFamily: 'var(--font-heading)',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    cursor: 'pointer',
+                    transition: 'all 0.1s',
+                  }}
+                >{opt.label}</button>
+              )
+            })}
           </div>
+          {!weight && <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 6 }}>Select a weight category to continue</div>}
         </div>
       </div>
 
@@ -123,7 +131,7 @@ export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config
       </div>
 
       <div style={{ display: 'flex', gap: 10 }}>
-        <button onClick={handleSave} disabled={saving || !name.trim()} style={btnPrimary}>
+        <button onClick={handleSave} disabled={saving || !name.trim() || !weight} style={{ ...btnPrimary, opacity: (saving || !name.trim() || !weight) ? 0.4 : 1 }}>
           {saving ? 'Saving...' : 'Add'}
         </button>
         <button onClick={onCancel} style={btnSecondary}>Cancel</button>
