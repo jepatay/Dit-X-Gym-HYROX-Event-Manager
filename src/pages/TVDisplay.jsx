@@ -19,6 +19,14 @@ const GOLD    = '#f59e0b'
 const SILVER  = '#9ca3af'
 const BRONZE  = '#b45309'
 
+function catLabel(team, config) {
+  if (team.categoryId && config?.categories) {
+    const cat = config.categories.find(c => c.id === team.categoryId)
+    if (cat) return cat.label
+  }
+  return team.competitionName || ''
+}
+
 export default function TVDisplay() {
   const { id } = useParams()
   const [event, setEvent]   = useState(null)
@@ -158,8 +166,8 @@ export default function TVDisplay() {
                 <Cell w={48} muted mono size={12}>{team.scheduledTime}</Cell>
                 <Cell flex>
                   <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{team.name}</div>
-                  {team.competitionName && (
-                    <div style={{ fontSize: 10, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{team.competitionName}</div>
+                  {catLabel(team, config) && (
+                    <div style={{ fontSize: 10, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{catLabel(team, config)}</div>
                   )}
                   <div style={{ fontSize: 11, color: MUTED2, marginTop: 1 }}>
                     {team.athlete1?.firstName} {team.athlete1?.lastName}

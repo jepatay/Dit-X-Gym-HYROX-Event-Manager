@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { collection, onSnapshot, query, where, doc, getDocFromServer, getDocsFromServer, updateDoc } from 'firebase/firestore'
+import { collection, onSnapshot, query, where, doc, getDocFromServer, getDocsFromServer, updateDoc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { secondsToHHMMSS, parseTimeInput } from '../utils/timeUtils'
+
+function catLabel(team, config) {
+  if (team.categoryId && config?.categories) {
+    const cat = config.categories.find(c => c.id === team.categoryId)
+    if (cat) return cat.label
+  }
+  return team.competitionName || ''
+}
 
 const BG      = '#0f1923'
 const SURFACE = '#1e2d45'
@@ -35,6 +43,7 @@ export default function AdminPage() {
   const { id } = useParams()
   const [event, setEvent] = useState(null)
   const [teams, setTeams] = useState([])
+  const [config, setConfig] = useState(null)
   const [time, setTime] = useState(new Date())
   const [tab, setTab] = useState(0)
   const [search, setSearch] = useState('')
@@ -46,12 +55,14 @@ export default function AdminPage() {
     async function freshLoad() {
       try {
         const teamsQuery = query(collection(db, 'teams'), where('eventId', '==', id))
-        const [evSnap, teamsSnap] = await Promise.all([
+        const [evSnap, teamsSnap, configSnap] = await Promise.all([
           getDocFromServer(doc(db, 'events', id)),
           getDocsFromServer(teamsQuery),
+          getDoc(doc(db, 'config', 'main')),
         ])
         if (evSnap.exists()) setEvent({ id: evSnap.id, ...evSnap.data() })
         setTeams(teamsSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+        if (configSnap.exists()) setConfig(configSnap.data())
       } catch (_) {}
     }
     freshLoad()
@@ -214,7 +225,7 @@ export default function AdminPage() {
             <div>
               <SectionHeader>{notCheckedIn.length} Not Checked In</SectionHeader>
               {notCheckedIn.map(team => (
-                <CheckInRow key={team.id} team={team} onToggle={() => toggleCheckIn(team)} />
+                <CheckInRow key={team.id} team={team} config={config} onToggle={() => toggleCheckIn(team)} />
               ))}
             </div>
           )}
@@ -223,7 +234,7 @@ export default function AdminPage() {
             <div>
               <SectionHeader style={{ color: SUCCESS }}>{checkedIn.length} Checked In ✓</SectionHeader>
               {checkedIn.map(team => (
-                <CheckInRow key={team.id} team={team} checked onToggle={() => toggleCheckIn(team)} />
+                <CheckInRow key={team.id} team={team} config={config} checked onToggle={() => toggleCheckIn(team)} />
               ))}
             </div>
           )}
@@ -277,7 +288,7 @@ export default function AdminPage() {
                     <span style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 14, flexShrink: 0, minWidth: 52 }}>{team.ref || `#${team.bibNumber}`}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{team.name}</div>
-                      {team.competitionName && <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{team.competitionName}</div>}
+                      {catLabel(team, config) && <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{catLabel(team, config)}</div>}
                       {team.weight && <div style={{ fontSize: 11, color: GOLD, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{team.weight}</div>}
                       <div style={{ fontSize: 12, color: MUTED2, marginTop: 2 }}>
                         {team.athlete1?.firstName} {team.athlete1?.lastName}
@@ -382,7 +393,7 @@ function SectionHeader({ children, style }) {
   )
 }
 
-function CheckInRow({ team, checked, onToggle }) {
+function CheckInRow({ team, checked, config, onToggle }) {
   return (
     <div
       onClick={onToggle}
@@ -391,7 +402,7 @@ function CheckInRow({ team, checked, onToggle }) {
       <span style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 15, flexShrink: 0, minWidth: 56 }}>{team.ref || `#${team.bibNumber}`}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.2 }}>{team.name}</div>
-        {team.competitionName && <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{team.competitionName}</div>}
+        {catLabel(team, config) && <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{catLabel(team, config)}</div>}
         {team.weight && <div style={{ fontSize: 11, color: GOLD, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{team.weight}</div>}
         <div style={{ fontSize: 12, color: MUTED2, marginTop: 2 }}>
           {team.scheduledTime && <span style={{ fontFamily: 'DM Mono, monospace' }}>{team.scheduledTime} · </span>}

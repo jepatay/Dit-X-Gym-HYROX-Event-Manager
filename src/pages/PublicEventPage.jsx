@@ -40,6 +40,14 @@ const HYBRID_STATION_ORDER = [
   { key: 'assaultBike',   label: 'Assault Bike' },
 ]
 
+function catLabel(team, config) {
+  if (team.categoryId && config?.categories) {
+    const cat = config.categories.find(c => c.id === team.categoryId)
+    if (cat) return cat.label
+  }
+  return team.competitionName || ''
+}
+
 function deriveStatus(eventDate) {
   if (!eventDate) return 'future'
   const today = new Date().toISOString().slice(0, 10)
@@ -274,8 +282,8 @@ export default function PublicEventPage() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 15, color: TEXT }}>{team.name}</div>
-                      {team.competitionName && (
-                        <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>{team.competitionName}</div>
+                      {catLabel(team, config) && (
+                        <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>{catLabel(team, config)}</div>
                       )}
                       {team.weight && (
                         <div style={{ fontSize: 11, color: '#f59e0b', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{team.weight}</div>

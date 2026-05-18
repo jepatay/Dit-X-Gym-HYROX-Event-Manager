@@ -31,12 +31,14 @@ export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config
     setSaving(true)
     try {
       const hasAthlete2 = !!(a2First || a2Last)
+      const matchedCat = categories.find(c => c.label === competitionName.trim())
       const data = {
         eventId,
         scheduledTime,
         ref: teamRef,
         name: name.trim(),
         competitionName: competitionName.trim(),
+        categoryId: matchedCat?.id ?? null,
         weight: weight || null,
         athlete1: { firstName: a1First, lastName: a1Last, email: a1Email },
         checkedIn: false,
