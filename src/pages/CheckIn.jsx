@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { doc, getDoc, collection, getDocs, query, where, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import EventNav from '../components/EventNav'
+import { BibRef } from '../components/BibRef'
 
 const FILTERS = ['All', 'Not Yet', 'Checked In', 'No-shows']
 
@@ -170,8 +171,8 @@ export default function CheckIn() {
                     gap: 14,
                   }}>
                     {/* Ref */}
-                    <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', fontWeight: 700, fontSize: 18, minWidth: 52, lineHeight: 1 }}>
-                      {team.ref || team.bibNumber}
+                    <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 18, minWidth: 52, lineHeight: 1 }}>
+                      <BibRef value={team.ref} bibNumber={team.bibNumber} color="var(--color-accent)" />
                     </div>
                     {/* Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>

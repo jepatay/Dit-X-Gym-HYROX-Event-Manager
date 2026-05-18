@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { collection, onSnapshot, query, where, doc, getDocFromServer, getDocsFromServer } from 'firebase/firestore'
 import { db } from '../firebase'
+import { BibRef } from '../components/BibRef'
 
 const BG      = '#0f1923'
 const SURFACE = '#1e2d45'
@@ -256,7 +257,7 @@ function NextPanel({ wave, eventWaves }) {
           <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: rowGap }}>
             {sorted.map(team => (
               <div key={team.id} style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-                <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: n >= 4 ? 22 : 26, color: ACCENT, width: refW, flexShrink: 0 }}>{team.ref || team.bibNumber}</span>
+                <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: n >= 4 ? 22 : 26, width: refW, flexShrink: 0 }}><BibRef value={team.ref} bibNumber={team.bibNumber} color={ACCENT} /></span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 800, fontSize: nameSz, lineHeight: 1.05, textTransform: 'uppercase', letterSpacing: '0.02em' }}>{team.name}</div>
                   {team.competitionName && (
@@ -311,7 +312,7 @@ function SmallPanel({ wave, label, eventWaves }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: rowGap, overflow: 'hidden' }}>
             {sorted.map(team => (
               <div key={team.id} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: n >= 4 ? 13 : 15, color: ACCENT, width: refW, flexShrink: 0 }}>{team.ref || team.bibNumber}</span>
+                <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: n >= 4 ? 13 : 15, width: refW, flexShrink: 0 }}><BibRef value={team.ref} bibNumber={team.bibNumber} color={ACCENT} /></span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: nameSz, textTransform: 'uppercase', display: 'block', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{team.name}</span>
                   {team.competitionName && (

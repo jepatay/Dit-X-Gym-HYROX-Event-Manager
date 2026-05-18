@@ -5,6 +5,7 @@ import { db } from '../firebase'
 import EventNav from '../components/EventNav'
 import SaveConfirmation from '../components/SaveConfirmation'
 import { secondsToHHMMSS, parseTimeInput, isValidTimeInput } from '../utils/timeUtils'
+import { BibRef } from '../components/BibRef'
 
 export default function Results() {
   const { id } = useParams()
@@ -154,7 +155,7 @@ export default function Results() {
                           {team.rank ? `#${team.rank}` : '—'}
                         </td>
                       )}
-                      <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', fontWeight: 500 }}>{team.ref || team.bibNumber}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}><BibRef value={team.ref} bibNumber={team.bibNumber} color="var(--color-accent)" /></td>
                       <td style={{ fontWeight: 600 }}>{team.name}</td>
                       <td style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
                         {team.athlete1?.firstName} {team.athlete1?.lastName}

@@ -14,6 +14,7 @@ import SaveConfirmation from '../components/SaveConfirmation'
 import { generateSlug } from '../utils/slugUtils'
 import { getOrCreateConfig } from '../utils/firestoreUtils'
 import { generateRef } from '../utils/bibUtils'
+import { BibRef } from '../components/BibRef'
 
 const TABS = ['Info', 'Teams', 'Checklist', 'Event Setup']
 
@@ -391,7 +392,7 @@ function TeamsTab({ eventId, lanes, config, eventType }) {
               {slotTeams.map(team => (
                 <div key={team.id} style={{ flex: 1, background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', padding: '8px 10px', minWidth: 0, position: 'relative' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', fontWeight: 700, fontSize: 13 }}>{team.ref || `#${team.bibNumber}`}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13 }}><BibRef value={team.ref} bibNumber={team.bibNumber} color="var(--color-accent)" /></span>
                     <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
                       <button onClick={() => { setMoving(moving === team.id ? null : team.id); setMoveTo(team.scheduledTime || '') }} title="Move to another slot" style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}>⏱</button>
                       <button onClick={() => deleteTeam(team.id)} style={{ background: 'transparent', border: 'none', color: 'var(--color-accent)', cursor: 'pointer', fontSize: 12, padding: '0 2px', lineHeight: 1 }}>✕</button>

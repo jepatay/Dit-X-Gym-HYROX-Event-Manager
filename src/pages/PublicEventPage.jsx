@@ -4,6 +4,7 @@ import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firesto
 import { db } from '../firebase'
 import { secondsToHHMMSS } from '../utils/timeUtils'
 import { WeightLabel } from '../utils/weightUtils'
+import { BibRef } from '../components/BibRef'
 
 const CACHE_KEY = (slug) => `ditxgym_event_${slug}`
 
@@ -287,7 +288,7 @@ export default function PublicEventPage() {
                 {members.map(team => (
                   <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', borderBottom: `1px solid ${BORDER2}`, gap: 12, opacity: started ? 0.65 : 1 }}>
                     <div style={{ minWidth: 56, flexShrink: 0 }}>
-                      <div style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 15 }}>{team.ref || team.bibNumber}</div>
+                      <div style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 15 }}><BibRef value={team.ref} bibNumber={team.bibNumber} color={ACCENT} /></div>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 15, color: TEXT }}>{team.name}</div>
