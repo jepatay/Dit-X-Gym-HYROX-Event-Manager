@@ -211,7 +211,7 @@ export default function TVDisplay() {
                     {team.athlete1?.firstName} {team.athlete1?.lastName}
                     {team.athlete2?.firstName && ` / ${team.athlete2.firstName}`}
                   </div>
-                  <WeightDot weight={team.weight} size={8} />
+                  <WeightLabel weight={team.weight} />
                 </Cell>
                 <Cell w={80} mono bold size={13} right style={{ color: SUCCESS }}>{secondsToHHMMSS(team.finishTimeSeconds)}</Cell>
               </Row>
