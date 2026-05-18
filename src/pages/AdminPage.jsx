@@ -43,7 +43,7 @@ function timeStrToSecs(hhmm) {
 
 function formatCountdown(diffSecs) {
   if (!isFinite(diffSecs) || diffSecs <= 0) return null
-  const total = Math.floor(diffSecs)
+  const total = Math.ceil(diffSecs)
   const h = Math.floor(total / 3600)
   const m = Math.floor((total % 3600) / 60)
   const s = total % 60
