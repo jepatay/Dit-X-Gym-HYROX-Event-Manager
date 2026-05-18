@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { secondsToHHMMSS } from '../utils/timeUtils'
+import { WeightDot } from '../utils/weightUtils'
 
 const CACHE_KEY = (slug) => `ditxgym_event_${slug}`
 
@@ -282,12 +283,12 @@ export default function PublicEventPage() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 15, color: TEXT }}>{team.name}</div>
-                      {catLabel(team, config) && (
-                        <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>{catLabel(team, config)}</div>
-                      )}
-                      {team.weight && (
-                        <div style={{ fontSize: 11, color: '#f59e0b', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{team.weight}</div>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', marginTop: 2 }}>
+                        {catLabel(team, config) && (
+                          <span style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{catLabel(team, config)}</span>
+                        )}
+                        <WeightDot weight={team.weight} />
+                      </div>
                       <div style={{ fontSize: 12, color: MUTED2, marginTop: 2 }}>
                         {team.athlete1?.firstName} {team.athlete1?.lastName}
                         {team.athlete2?.firstName && <> / {team.athlete2.firstName} {team.athlete2.lastName}</>}

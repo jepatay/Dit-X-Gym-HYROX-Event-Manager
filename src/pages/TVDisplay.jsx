@@ -4,6 +4,7 @@ import { collection, onSnapshot, query, where, doc, getDocFromServer, getDocsFro
 import { QRCodeSVG } from 'qrcode.react'
 import { db } from '../firebase'
 import { secondsToHHMMSS } from '../utils/timeUtils'
+import { WeightDot } from '../utils/weightUtils'
 
 const BG      = '#0f1923'
 const SURFACE = '#1e2d45'
@@ -166,9 +167,10 @@ export default function TVDisplay() {
                 <Cell w={48} muted mono size={12}>{team.scheduledTime}</Cell>
                 <Cell flex>
                   <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{team.name}</div>
-                  {catLabel(team, config) && (
-                    <div style={{ fontSize: 10, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{catLabel(team, config)}</div>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', marginTop: 1 }}>
+                    {catLabel(team, config) && <span style={{ fontSize: 10, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{catLabel(team, config)}</span>}
+                    <WeightDot weight={team.weight} size={8} />
+                  </div>
                   <div style={{ fontSize: 11, color: MUTED2, marginTop: 1 }}>
                     {team.athlete1?.firstName} {team.athlete1?.lastName}
                     {team.athlete2?.firstName && ` / ${team.athlete2.firstName}`}
@@ -203,7 +205,7 @@ export default function TVDisplay() {
                     {team.athlete1?.firstName} {team.athlete1?.lastName}
                     {team.athlete2?.firstName && ` / ${team.athlete2.firstName}`}
                   </div>
-                  {team.weight && <div style={{ fontSize: 10, color: GOLD, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{team.weight}</div>}
+                  <WeightDot weight={team.weight} size={8} />
                 </Cell>
                 <Cell w={80} mono bold size={13} right style={{ color: SUCCESS }}>{secondsToHHMMSS(team.finishTimeSeconds)}</Cell>
               </Row>
