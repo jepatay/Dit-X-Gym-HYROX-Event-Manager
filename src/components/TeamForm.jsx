@@ -2,13 +2,7 @@ import { useState, useRef } from 'react'
 import { collection, addDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { generateRef } from '../utils/bibUtils'
-
-const WEIGHT_OPTIONS = [
-  { value: 'Women Weight', label: 'Women' },
-  { value: 'Men Weight', label: 'Men' },
-  { value: 'Pro Weight', label: 'Pro' },
-  { value: 'Family Weight', label: 'Family' },
-]
+import { WEIGHT_OPTIONS, weightColor } from '../utils/weightUtils'
 
 export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config, eventType, onSaved, onCancel }) {
   const teamRef = generateRef(scheduledTime, laneIndex)
@@ -96,9 +90,9 @@ export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config
                 onClick={() => setWeight(weight === opt.value ? '' : opt.value)}
                 style={{
                   padding: '6px 10px',
-                  background: weight === opt.value ? '#f59e0b' : 'transparent',
-                  border: `1px solid ${weight === opt.value ? '#f59e0b' : 'var(--color-border)'}`,
-                  color: weight === opt.value ? '#000' : 'var(--color-text-muted)',
+                  background: weight === opt.value ? weightColor(opt.value) : 'transparent',
+                  border: `1px solid ${weight === opt.value ? weightColor(opt.value) : 'var(--color-border)'}`,
+                  color: weight === opt.value ? '#fff' : 'var(--color-text-muted)',
                   fontFamily: 'var(--font-heading)',
                   fontSize: 11,
                   textTransform: 'uppercase',

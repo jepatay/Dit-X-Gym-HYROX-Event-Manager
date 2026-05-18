@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { collection, onSnapshot, query, where, doc, getDocFromServer, getDocsFromServer, updateDoc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { secondsToHHMMSS, parseTimeInput } from '../utils/timeUtils'
+import { WeightDot } from '../utils/weightUtils'
 
 function catLabel(team, config) {
   if (team.categoryId && config?.categories) {
@@ -288,8 +289,10 @@ export default function AdminPage() {
                     <span style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 14, flexShrink: 0, minWidth: 52 }}>{team.ref || `#${team.bibNumber}`}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{team.name}</div>
-                      {catLabel(team, config) && <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{catLabel(team, config)}</div>}
-                      {team.weight && <div style={{ fontSize: 11, color: GOLD, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{team.weight}</div>}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                        {catLabel(team, config) && <span style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{catLabel(team, config)}</span>}
+                        <WeightDot weight={team.weight} />
+                      </div>
                       <div style={{ fontSize: 12, color: MUTED2, marginTop: 2 }}>
                         {team.athlete1?.firstName} {team.athlete1?.lastName}
                         {team.athlete2?.firstName && ` / ${team.athlete2.firstName}`}
@@ -328,7 +331,7 @@ export default function AdminPage() {
                       {team.athlete1?.firstName} {team.athlete1?.lastName}
                       {team.athlete2?.firstName && ` / ${team.athlete2.firstName}`}
                     </div>
-                    {team.weight && <div style={{ fontSize: 11, color: GOLD, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 2 }}>{team.weight}</div>}
+                    <WeightDot weight={team.weight} size={12} />
                   </div>
                   <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: MUTED2, flexShrink: 0 }}>Start: {team.scheduledTime}</div>
                 </div>
@@ -373,7 +376,7 @@ export default function AdminPage() {
                     <span style={{ fontFamily: 'DM Mono, monospace', color: MUTED, fontWeight: 700, fontSize: 14, flexShrink: 0, minWidth: 56 }}>{team.ref || `#${team.bibNumber}`}</span>
                     <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: MUTED2, flexShrink: 0 }}>{team.scheduledTime}</span>
                     <span style={{ fontSize: 14, fontWeight: 600 }}>{team.name}</span>
-                    {team.weight && <span style={{ fontSize: 11, color: GOLD, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase' }}>{team.weight}</span>}
+                    <WeightDot weight={team.weight} />
                   </div>
                 ))}
               </div>
@@ -402,8 +405,10 @@ function CheckInRow({ team, checked, config, onToggle }) {
       <span style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 15, flexShrink: 0, minWidth: 56 }}>{team.ref || `#${team.bibNumber}`}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.2 }}>{team.name}</div>
-        {catLabel(team, config) && <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{catLabel(team, config)}</div>}
-        {team.weight && <div style={{ fontSize: 11, color: GOLD, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{team.weight}</div>}
+        <div style={{ display: 'flex', alignItems: 'center', marginTop: 1 }}>
+          {catLabel(team, config) && <span style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{catLabel(team, config)}</span>}
+          <WeightDot weight={team.weight} />
+        </div>
         <div style={{ fontSize: 12, color: MUTED2, marginTop: 2 }}>
           {team.scheduledTime && <span style={{ fontFamily: 'DM Mono, monospace' }}>{team.scheduledTime} · </span>}
           {team.athlete1?.firstName} {team.athlete1?.lastName}
