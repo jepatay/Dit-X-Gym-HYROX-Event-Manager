@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { db } from '../firebase'
 import { secondsToHHMMSS } from '../utils/timeUtils'
 import { WeightLabel } from '../utils/weightUtils'
+import { BibRef } from '../components/BibRef'
 
 const BG      = '#0f1923'
 const SURFACE = '#1e2d45'
@@ -171,11 +172,7 @@ export default function TVDisplay() {
             </Row>
             {nextAthletes.map(team => (
               <Row key={team.id}>
-                <Cell w={56} mono bold size={14}>
-                  {team.ref
-                    ? <><span style={{ color: ACCENT }}>{team.ref.slice(0, -1)}</span><span style={{ color: '#fff' }}>{team.ref.slice(-1)}</span></>
-                    : <span style={{ color: ACCENT }}>{team.bibNumber}</span>}
-                </Cell>
+                <Cell w={56} mono bold size={14}><BibRef value={team.ref} bibNumber={team.bibNumber} color={ACCENT} /></Cell>
                 <Cell w={48} muted mono size={12}>{team.scheduledTime}</Cell>
                 <Cell flex>
                   <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{team.name}</div>
@@ -208,11 +205,7 @@ export default function TVDisplay() {
             </Row>
             {recentFinishers.map(team => (
               <Row key={team.id}>
-                <Cell w={56} mono bold size={14}>
-                  {team.ref
-                    ? <><span style={{ color: ACCENT }}>{team.ref.slice(0, -1)}</span><span style={{ color: '#fff' }}>{team.ref.slice(-1)}</span></>
-                    : <span style={{ color: ACCENT }}>{team.bibNumber}</span>}
-                </Cell>
+                <Cell w={56} mono bold size={14}><BibRef value={team.ref} bibNumber={team.bibNumber} color={ACCENT} /></Cell>
                 <Cell flex>
                   <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{team.name}</div>
                   <div style={{ fontSize: 11, color: MUTED2, marginTop: 1 }}>

@@ -4,6 +4,7 @@ import { collection, onSnapshot, query, where, doc, getDocFromServer, getDocsFro
 import { db } from '../firebase'
 import { secondsToHHMMSS, parseTimeInput } from '../utils/timeUtils'
 import { WeightLabel } from '../utils/weightUtils'
+import { BibRef } from '../components/BibRef'
 
 function catLabel(team, config) {
   const cats = config?.categories
@@ -297,7 +298,7 @@ export default function AdminPage() {
                     opacity: started ? 0.6 : 1,
                     background: team.checkedIn ? 'rgba(34,197,94,0.04)' : 'transparent',
                   }}>
-                    <span style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 14, flexShrink: 0, minWidth: 52 }}>{team.ref || `#${team.bibNumber}`}</span>
+                    <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 14, flexShrink: 0, minWidth: 52 }}><BibRef value={team.ref} bibNumber={team.bibNumber} color={ACCENT} /></span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{team.name}</div>
                       {catLabel(team, config) && <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{catLabel(team, config)}</div>}
@@ -333,7 +334,7 @@ export default function AdminPage() {
             return (
               <div key={team.id} style={{ borderBottom: `1px solid ${BORDER}`, padding: '12px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
-                  <span style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 15, flexShrink: 0, minWidth: 56 }}>{team.ref || `#${team.bibNumber}`}</span>
+                  <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 15, flexShrink: 0, minWidth: 56 }}><BibRef value={team.ref} bibNumber={team.bibNumber} color={ACCENT} /></span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 15 }}>{team.name}</div>
                     <div style={{ fontSize: 12, color: MUTED2 }}>
@@ -382,7 +383,7 @@ export default function AdminPage() {
                 <SectionHeader style={{ color: MUTED2 }}>Not yet started ({notStarted.length})</SectionHeader>
                 {notStarted.map(team => (
                   <div key={team.id} style={{ borderBottom: `1px solid ${BORDER}`, padding: '10px 16px', opacity: 0.5, display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <span style={{ fontFamily: 'DM Mono, monospace', color: MUTED, fontWeight: 700, fontSize: 14, flexShrink: 0, minWidth: 56 }}>{team.ref || `#${team.bibNumber}`}</span>
+                    <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 14, flexShrink: 0, minWidth: 56 }}><BibRef value={team.ref} bibNumber={team.bibNumber} color={MUTED} /></span>
                     <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: MUTED2, flexShrink: 0 }}>{team.scheduledTime}</span>
                     <span style={{ fontSize: 14, fontWeight: 600 }}>{team.name}</span>
                     <WeightLabel weight={team.weight} />
@@ -411,7 +412,7 @@ function CheckInRow({ team, checked, config, onToggle }) {
       onClick={onToggle}
       style={{ borderBottom: `1px solid ${BORDER}`, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', background: checked ? 'rgba(34,197,94,0.05)' : 'transparent', userSelect: 'none' }}
     >
-      <span style={{ fontFamily: 'DM Mono, monospace', color: ACCENT, fontWeight: 700, fontSize: 15, flexShrink: 0, minWidth: 56 }}>{team.ref || `#${team.bibNumber}`}</span>
+      <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 15, flexShrink: 0, minWidth: 56 }}><BibRef value={team.ref} bibNumber={team.bibNumber} color={ACCENT} /></span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.2 }}>{team.name}</div>
         {catLabel(team, config) && <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{catLabel(team, config)}</div>}
