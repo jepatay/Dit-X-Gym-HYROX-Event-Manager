@@ -181,7 +181,6 @@ export default function PublicEventPage() {
         const graceOver = diffSecs < -15
         return { slotTime, members, diffSecs, started, graceOver }
       })
-      .filter(g => status === 'past' || !g.graceOver)
   })()
 
   function formatCountdown(diffSecs) {
