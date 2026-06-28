@@ -330,7 +330,6 @@ export default function AdminPage() {
             const val = getInput(team)
             const isSaving = saving[team.id]
             const hasTime = team.finishTimeSeconds != null
-            const inputHasValue = val.trim().length > 0
             return (
               <div key={team.id} style={{ borderBottom: `1px solid ${BORDER}`, padding: '12px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
@@ -346,16 +345,14 @@ export default function AdminPage() {
                   <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: MUTED2, flexShrink: 0 }}>Start: {team.scheduledTime}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {!inputHasValue && (
-                    <button
-                      onClick={() => captureNow(team)}
-                      style={{
-                        padding: '10px 16px', background: ACCENT, color: '#fff', border: 'none',
-                        fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, fontWeight: 700,
-                        textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', flexShrink: 0,
-                      }}
-                    >NOW</button>
-                  )}
+                  <button
+                    onClick={() => captureNow(team)}
+                    style={{
+                      padding: '10px 16px', background: ACCENT, color: '#fff', border: 'none',
+                      fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, fontWeight: 700,
+                      textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', flexShrink: 0,
+                    }}
+                  >NOW</button>
                   <div style={{ flex: 1, position: 'relative' }}>
                     <input
                       value={val}

@@ -181,7 +181,6 @@ export default function PublicEventPage() {
         const graceOver = diffSecs < -15
         return { slotTime, members, diffSecs, started, graceOver }
       })
-      .filter(g => !g.graceOver)
   })()
 
   function formatCountdown(diffSecs) {
@@ -304,6 +303,8 @@ export default function PublicEventPage() {
                         <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 14, color: '#22c55e', fontWeight: 700 }}>{secondsToHHMMSS(team.finishTimeSeconds)}</div>
                       ) : team.checkedIn ? (
                         <span style={{ fontSize: 11, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#22c55e', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', padding: '3px 8px' }}>✓ IN</span>
+                      ) : status === 'past' ? (
+                        <span style={{ fontSize: 16, color: ACCENT, fontWeight: 700 }}>✗</span>
                       ) : null}
                     </div>
                   </div>
