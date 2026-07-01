@@ -161,6 +161,14 @@ export default function AdminPage() {
     })
   })()
 
+  function adjustTime(team, deltaSecs) {
+    const current = team.finishTimeSeconds != null ? team.finishTimeSeconds : 0
+    const next = Math.max(0, current + deltaSecs)
+    const str = secondsToHHMMSS(next)
+    setTimeInputs(prev => ({ ...prev, [team.id]: str }))
+    saveTime(team, str)
+  }
+
   function captureNow(team) {
     const [sh, sm] = (team.scheduledTime || '00:00').split(':').map(Number)
     const startSecs = sh * 3600 + sm * 60
@@ -365,6 +373,12 @@ export default function AdminPage() {
                       <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: SUCCESS, fontSize: 18, fontWeight: 700, pointerEvents: 'none' }}>✓</span>
                     )}
                   </div>
+                  {hasTime && (
+                    <>
+                      <button onClick={() => adjustTime(team, -1)} style={btnAdjust}>−</button>
+                      <button onClick={() => adjustTime(team, +1)} style={btnAdjust}>+</button>
+                    </>
+                  )}
                   {isSaving && <span style={{ fontSize: 12, color: MUTED2, flexShrink: 0 }}>Saving...</span>}
                 </div>
               </div>
@@ -426,4 +440,11 @@ function CheckInRow({ team, checked, config, onToggle }) {
       }
     </div>
   )
+}
+
+const btnAdjust = {
+  width: 40, height: 40, borderRadius: '50%', border: `2px solid #f59e0b`,
+  background: 'transparent', color: '#f59e0b', fontSize: 22, fontWeight: 700,
+  cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+  lineHeight: 1, padding: 0,
 }
