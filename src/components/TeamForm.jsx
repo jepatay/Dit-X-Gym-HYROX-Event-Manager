@@ -1,21 +1,22 @@
 import { useState, useRef } from 'react'
-import { collection, addDoc } from 'firebase/firestore'
+import { collection, addDoc, doc, updateDoc, deleteField } from 'firebase/firestore'
 import { db } from '../firebase'
 import { generateRef } from '../utils/bibUtils'
 import { WEIGHT_OPTIONS, weightColor } from '../utils/weightUtils'
 
-export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config, eventType, onSaved, onCancel }) {
-  const teamRef = generateRef(scheduledTime, laneIndex)
+export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config, eventType, team, onSaved, onCancel }) {
+  const isEditing = !!team
+  const teamRef = isEditing ? team.ref : generateRef(scheduledTime, laneIndex)
 
-  const [name, setName] = useState('')
-  const [competitionName, setCompetitionName] = useState('')
-  const [weight, setWeight] = useState('')
-  const [a1First, setA1First] = useState('')
-  const [a1Last, setA1Last] = useState('')
-  const [a1Email, setA1Email] = useState('')
-  const [a2First, setA2First] = useState('')
-  const [a2Last, setA2Last] = useState('')
-  const [a2Email, setA2Email] = useState('')
+  const [name, setName] = useState(team?.name || '')
+  const [competitionName, setCompetitionName] = useState(team?.competitionName || '')
+  const [weight, setWeight] = useState(team?.weight || '')
+  const [a1First, setA1First] = useState(team?.athlete1?.firstName || '')
+  const [a1Last, setA1Last] = useState(team?.athlete1?.lastName || '')
+  const [a1Email, setA1Email] = useState(team?.athlete1?.email || '')
+  const [a2First, setA2First] = useState(team?.athlete2?.firstName || '')
+  const [a2Last, setA2Last] = useState(team?.athlete2?.lastName || '')
+  const [a2Email, setA2Email] = useState(team?.athlete2?.email || '')
   const [saving, setSaving] = useState(false)
   const savingRef = useRef(false)
 
@@ -27,25 +28,38 @@ export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config
       const hasAthlete2 = !!(a2First || a2Last)
       const matchedCat = categories.find(c => c.label === competitionName.trim())
       const data = {
-        eventId,
-        scheduledTime,
-        ref: teamRef,
         name: name.trim(),
         competitionName: competitionName.trim(),
         categoryId: matchedCat?.id ?? null,
         weight: weight || null,
         athlete1: { firstName: a1First, lastName: a1Last, email: a1Email },
-        checkedIn: false,
-        checkedInAt: null,
-        finishTimeSeconds: null,
-        rank: null,
       }
       if (hasAthlete2) {
         data.athlete2 = { firstName: a2First, lastName: a2Last, email: a2Email }
         data.athlete2Confirmed = !!(a2First && a2Last)
+      } else if (isEditing) {
+        data.athlete2 = deleteField()
+        data.athlete2Confirmed = deleteField()
       }
-      const docRef = await addDoc(collection(db, 'teams'), data)
-      onSaved({ id: docRef.id, ...data })
+      if (isEditing) {
+        await updateDoc(doc(db, 'teams', team.id), data)
+        const updated = { ...team, ...data }
+        if (!hasAthlete2) { delete updated.athlete2; delete updated.athlete2Confirmed }
+        onSaved(updated)
+      } else {
+        const newTeamData = {
+          eventId,
+          scheduledTime,
+          ref: teamRef,
+          ...data,
+          checkedIn: false,
+          checkedInAt: null,
+          finishTimeSeconds: null,
+          rank: null,
+        }
+        const docRef = await addDoc(collection(db, 'teams'), newTeamData)
+        onSaved({ id: docRef.id, ...newTeamData })
+      }
     } finally {
       savingRef.current = false
       setSaving(false)
@@ -132,7 +146,7 @@ export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config
 
       <div style={{ display: 'flex', gap: 10 }}>
         <button onClick={handleSave} disabled={saving || !name.trim() || !weight} style={{ ...btnPrimary, opacity: (saving || !name.trim() || !weight) ? 0.4 : 1 }}>
-          {saving ? 'Saving...' : 'Add'}
+          {saving ? 'Saving...' : (isEditing ? 'Save' : 'Add')}
         </button>
         <button onClick={onCancel} style={btnSecondary}>Cancel</button>
       </div>
