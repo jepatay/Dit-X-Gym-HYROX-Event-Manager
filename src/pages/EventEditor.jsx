@@ -305,6 +305,7 @@ function addMinutes(timeStr, mins) {
 function TeamsTab({ eventId, lanes, config, eventType }) {
   const [teams, setTeams] = useState([])
   const [adding, setAdding] = useState(null) // { time, laneIndex }
+  const [editing, setEditing] = useState(null) // teamId
   const [moving, setMoving] = useState(null) // teamId
   const [moveTo, setMoveTo] = useState('')
   const [newSlotTime, setNewSlotTime] = useState('09:00')
@@ -394,6 +395,7 @@ function TeamsTab({ eventId, lanes, config, eventType }) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>
                     <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13 }}><BibRef value={team.ref} bibNumber={team.bibNumber} color="var(--color-accent)" /></span>
                     <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                      <button onClick={() => setEditing(editing === team.id ? null : team.id)} title="Edit team" style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}>✎</button>
                       <button onClick={() => { setMoving(moving === team.id ? null : team.id); setMoveTo(team.scheduledTime || '') }} title="Move to another slot" style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}>⏱</button>
                       <button onClick={() => deleteTeam(team.id)} style={{ background: 'transparent', border: 'none', color: 'var(--color-accent)', cursor: 'pointer', fontSize: 12, padding: '0 2px', lineHeight: 1 }}>✕</button>
                     </div>
@@ -446,6 +448,18 @@ function TeamsTab({ eventId, lanes, config, eventType }) {
                 onCancel={() => setAdding(null)}
               />
             )}
+            {slotTeams.filter(t => t.id === editing).map(editTeam => (
+              <TeamForm
+                key={editTeam.id}
+                eventId={eventId}
+                scheduledTime={editTeam.scheduledTime}
+                config={config}
+                eventType={eventType}
+                team={editTeam}
+                onSaved={(updatedTeam) => { setTeams(ts => ts.map(t => t.id === updatedTeam.id ? updatedTeam : t)); setEditing(null) }}
+                onCancel={() => setEditing(null)}
+              />
+            ))}
           </div>
         )
       })}
