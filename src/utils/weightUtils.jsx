@@ -2,16 +2,14 @@ export const WEIGHT_OPTIONS = [
   { value: 'Women Weight', label: 'Women'      },
   { value: 'Men Weight',   label: 'Men'        },
   { value: 'Pro Weight',   label: 'Pro'        },
-  { value: 'Family >10',   label: 'Family >10' },
-  { value: 'Family <10',   label: 'Family <10' },
+  { value: 'Family',       label: 'Family'      },
 ]
 
 const WEIGHT_COLORS = {
   'Women Weight': '#f59e0b',
   'Men Weight':   '#3b82f6',
   'Pro Weight':   '#ef4444',
-  'Family >10':   '#22c55e',
-  'Family <10':   '#22c55e',
+  'Family':       '#22c55e',
 }
 
 export function weightColor(weight) {
