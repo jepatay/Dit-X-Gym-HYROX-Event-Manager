@@ -37,6 +37,7 @@ export default function NavBar() {
           DIT X-GYM
         </Link>
         <Link to="/" style={navLinkStyle}>Events</Link>
+        <Link to="/statistics" style={navLinkStyle}>Statistics</Link>
         <Link to="/settings" style={navLinkStyle}>Settings</Link>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
