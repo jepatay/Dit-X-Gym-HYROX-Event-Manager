@@ -10,6 +10,7 @@ import Results from './pages/Results'
 import Leaderboard from './pages/Leaderboard'
 import PublicEventPage from './pages/PublicEventPage'
 import Settings from './pages/Settings'
+import Statistics from './pages/Statistics'
 import TVDisplay from './pages/TVDisplay'
 import StartDisplay from './pages/StartDisplay'
 import AdminPage from './pages/AdminPage'
@@ -38,6 +39,7 @@ function AppRoutes() {
       <Route path="/event/:id/startlist" element={<ProtectedRoute><StartList /></ProtectedRoute>} />
       <Route path="/event/:id/results" element={<ProtectedRoute><Results /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/statistics" element={<ProtectedRoute><Statistics /></ProtectedRoute>} />
 
     </Routes>
   )
