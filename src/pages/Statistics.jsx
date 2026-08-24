@@ -10,6 +10,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js'
+import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { db } from '../firebase'
 import NavBar from '../components/NavBar'
 import { getOrCreateConfig } from '../utils/firestoreUtils'
@@ -301,7 +302,8 @@ function ChartCard({ title, description, type, data, options, height = 320 }) {
     }, 'image/png')
   }
 
-  const Comp = type === 'doughnut' ? Doughnut : Bar
+  const isDoughnut = type === 'doughnut'
+  const Comp = isDoughnut ? Doughnut : Bar
 
   return (
     <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '18px 20px', marginBottom: 20 }}>
@@ -315,7 +317,7 @@ function ChartCard({ title, description, type, data, options, height = 320 }) {
         </button>
       </div>
       <div style={{ height, position: 'relative', marginTop: 12 }}>
-        <Comp ref={chartRef} data={data} options={options} />
+        <Comp ref={chartRef} data={data} options={options} plugins={isDoughnut ? [ChartDataLabels] : []} />
       </div>
     </div>
   )
@@ -357,12 +359,30 @@ const stackedBarOptions = {
   },
 }
 
+function pctOf(value, allValues) {
+  const total = allValues.reduce((a, b) => a + b, 0)
+  return total ? Math.round((value / total) * 100) : 0
+}
+
 const doughnutOptions = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
     legend: { position: 'bottom', labels: { color: '#f0f4f8', font: { family: 'Inter, sans-serif', size: 11 }, boxWidth: 12 } },
-    tooltip: { backgroundColor: '#243352', titleColor: '#f0f4f8', bodyColor: '#f0f4f8', borderColor: '#2d4060', borderWidth: 1 },
+    tooltip: {
+      backgroundColor: '#243352', titleColor: '#f0f4f8', bodyColor: '#f0f4f8', borderColor: '#2d4060', borderWidth: 1,
+      callbacks: {
+        label: (ctx) => `${ctx.label}: ${ctx.parsed} (${pctOf(ctx.parsed, ctx.dataset.data)}%)`,
+      },
+    },
+    datalabels: {
+      color: '#fff',
+      font: { weight: 700, size: 12, family: 'Inter, sans-serif' },
+      formatter: (value, ctx) => {
+        const pct = pctOf(value, ctx.chart.data.datasets[0].data)
+        return pct > 0 ? `${pct}%` : ''
+      },
+    },
   },
 }
 
