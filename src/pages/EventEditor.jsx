@@ -39,6 +39,7 @@ export default function EventEditor() {
   const [selectedStaffIds, setSelectedStaffIds] = useState([])
   const [weightOverrides, setWeightOverrides] = useState({})
   const [publicSlug, setPublicSlug] = useState('')
+  const [publicAdminEnabled, setPublicAdminEnabled] = useState(false)
 
   useEffect(() => {
     getOrCreateConfig().then(setConfig)
@@ -61,12 +62,13 @@ export default function EventEditor() {
     setSelectedStaffIds(d.selectedStaffIds || [])
     setWeightOverrides(d.weightOverrides || {})
     setPublicSlug(d.publicSlug || '')
+    setPublicAdminEnabled(d.publicAdminEnabled === true)
   }
 
   function buildData(slug) {
     const today = new Date().toISOString().substring(0, 10)
     const status = date < today ? 'past' : date === today ? 'live' : 'future'
-    return { name, date, eventType, status, links, waves, lanes, checklist, maps, selectedStaffIds, weightOverrides, publicSlug: slug }
+    return { name, date, eventType, status, links, waves, lanes, checklist, maps, selectedStaffIds, weightOverrides, publicSlug: slug, publicAdminEnabled }
   }
 
   async function saveEvent() {
@@ -82,6 +84,14 @@ export default function EventEditor() {
       await setDoc(doc(db, 'events', eventId), data, { merge: true })
     }
     setSaved(s => s + 1)
+  }
+
+  async function togglePublicAdmin() {
+    const next = !publicAdminEnabled
+    setPublicAdminEnabled(next)
+    if (eventId) {
+      await updateDoc(doc(db, 'events', eventId), { publicAdminEnabled: next })
+    }
   }
 
   return (
@@ -143,6 +153,9 @@ export default function EventEditor() {
             lanes={lanes} setLanes={setLanes}
             links={links} setLinks={setLinks}
             onSave={saveEvent} saved={saved}
+            eventId={eventId}
+            publicAdminEnabled={publicAdminEnabled}
+            onTogglePublicAdmin={togglePublicAdmin}
           />
         )}
         {tab === 1 && (
@@ -170,7 +183,7 @@ export default function EventEditor() {
   )
 }
 
-function InfoTab({ name, setName, date, setDate, eventType, setEventType, lanes, setLanes, links, setLinks, onSave, saved }) {
+function InfoTab({ name, setName, date, setDate, eventType, setEventType, lanes, setLanes, links, setLinks, onSave, saved, eventId, publicAdminEnabled, onTogglePublicAdmin }) {
   return (
     <div style={{ maxWidth: 620 }}>
       <Field label="Event Name">
@@ -249,10 +262,78 @@ function InfoTab({ name, setName, date, setDate, eventType, setEventType, lanes,
           + Add Link
         </button>
       </Field>
+      <Field label="Admin Access">
+        {!eventId ? (
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Save the event first to enable link-based admin access.</p>
+        ) : (
+          <div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <button
+                type="button"
+                onClick={() => publicAdminEnabled && onTogglePublicAdmin()}
+                style={{
+                  padding: '8px 18px',
+                  background: !publicAdminEnabled ? 'var(--color-accent)' : 'transparent',
+                  border: '1px solid ' + (!publicAdminEnabled ? 'var(--color-accent)' : 'var(--color-border)'),
+                  color: !publicAdminEnabled ? '#fff' : 'var(--color-text)',
+                  fontFamily: 'var(--font-heading)',
+                  fontSize: 13,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  cursor: 'pointer',
+                }}
+              >Login Required</button>
+              <button
+                type="button"
+                onClick={() => !publicAdminEnabled && onTogglePublicAdmin()}
+                style={{
+                  padding: '8px 18px',
+                  background: publicAdminEnabled ? 'var(--color-success)' : 'transparent',
+                  border: '1px solid ' + (publicAdminEnabled ? 'var(--color-success)' : 'var(--color-border)'),
+                  color: publicAdminEnabled ? '#fff' : 'var(--color-text)',
+                  fontFamily: 'var(--font-heading)',
+                  fontSize: 13,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  cursor: 'pointer',
+                }}
+              >Link Access (No Login)</button>
+            </div>
+            {publicAdminEnabled && (
+              <>
+                <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+                  Anyone with this link can check athletes in and record finish times — no login needed. Switch back to "Login Required" any time to cut off access.
+                </p>
+                <AdminLinkCopy eventId={eventId} />
+              </>
+            )}
+          </div>
+        )}
+      </Field>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 32 }}>
         <button type="button" onClick={onSave} style={btnPrimary}>Save</button>
         <SaveConfirmation trigger={saved} />
       </div>
+    </div>
+  )
+}
+
+function AdminLinkCopy({ eventId }) {
+  const [copied, setCopied] = useState(false)
+  const baseUrl = import.meta.env.VITE_PUBLIC_BASE_URL || window.location.origin
+  const adminUrl = `${baseUrl}/event/${eventId}/admin`
+
+  function handleCopy() {
+    navigator.clipboard.writeText(adminUrl).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      <input readOnly value={adminUrl} style={{ ...inputStyle, width: 'auto', flex: 1, minWidth: 200, color: 'var(--color-text-muted)' }} onFocus={e => e.target.select()} />
+      <button type="button" onClick={handleCopy} style={btnSecondary}>{copied ? 'Copied!' : 'Copy Link'}</button>
     </div>
   )
 }

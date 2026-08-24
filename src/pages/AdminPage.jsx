@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Navigate } from 'react-router-dom'
 import { collection, onSnapshot, query, where, doc, getDocFromServer, getDocsFromServer, updateDoc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
+import { useAuth } from '../context/AuthContext'
 import { secondsToHHMMSS, parseTimeInput } from '../utils/timeUtils'
 import { WeightLabel } from '../utils/weightUtils'
 import { BibRef } from '../components/BibRef'
@@ -54,7 +55,9 @@ function formatCountdown(diffSecs) {
 
 export default function AdminPage() {
   const { id } = useParams()
+  const user = useAuth()
   const [event, setEvent] = useState(null)
+  const [eventLoaded, setEventLoaded] = useState(false)
   const [teams, setTeams] = useState([])
   const [config, setConfig] = useState(null)
   const [time, setTime] = useState(new Date())
@@ -76,7 +79,10 @@ export default function AdminPage() {
         if (evSnap.exists()) setEvent({ id: evSnap.id, ...evSnap.data() })
         setTeams(teamsSnap.docs.map(d => ({ id: d.id, ...d.data() })))
         if (configSnap.exists()) setConfig(configSnap.data())
-      } catch (_) {}
+      } catch (_) {
+      } finally {
+        setEventLoaded(true)
+      }
     }
     freshLoad()
 
@@ -94,6 +100,18 @@ export default function AdminPage() {
     const clock = setInterval(() => setTime(new Date()), 1000)
     return () => { unsubs.forEach(u => u()); clearInterval(clock) }
   }, [id])
+
+  // Coaches (logged in) always get in. Everyone else needs the event's
+  // organizer-controlled "no login" admin access switched on.
+  if (user === undefined || !eventLoaded) {
+    return <div style={{ background: BG, minHeight: '100vh' }} />
+  }
+  if (!event) {
+    return <div style={{ background: BG, color: TEXT, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Event not found.</div>
+  }
+  if (!user && event.publicAdminEnabled !== true) {
+    return <Navigate to="/login" replace />
+  }
 
   const clockStr = time.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   const nowHHMM = `${String(time.getHours()).padStart(2,'0')}:${String(time.getMinutes()).padStart(2,'0')}`
