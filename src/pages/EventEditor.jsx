@@ -9,10 +9,9 @@ import NavBar from '../components/NavBar'
 import CalendarPicker from '../components/CalendarPicker'
 import ChecklistPanel from '../components/ChecklistPanel'
 import TeamForm from '../components/TeamForm'
-import WeightCheatSheet from '../components/WeightCheatSheet'
 import SaveConfirmation from '../components/SaveConfirmation'
 import { generateSlug } from '../utils/slugUtils'
-import { getOrCreateConfig } from '../utils/firestoreUtils'
+import { getOrCreateConfig, buildDefaultStations } from '../utils/firestoreUtils'
 import { generateRef } from '../utils/bibUtils'
 import { BibRef } from '../components/BibRef'
 
@@ -37,7 +36,7 @@ export default function EventEditor() {
   const [checklist, setChecklist] = useState({})
   const [maps, setMaps] = useState({})
   const [selectedStaffIds, setSelectedStaffIds] = useState([])
-  const [weightOverrides, setWeightOverrides] = useState({})
+  const [stationOverrides, setStationOverrides] = useState({})
   const [publicSlug, setPublicSlug] = useState('')
   const [publicAdminEnabled, setPublicAdminEnabled] = useState(false)
 
@@ -60,7 +59,7 @@ export default function EventEditor() {
     setChecklist(d.checklist || {})
     setMaps(d.maps || {})
     setSelectedStaffIds(d.selectedStaffIds || [])
-    setWeightOverrides(d.weightOverrides || {})
+    setStationOverrides(d.stationOverrides || {})
     setPublicSlug(d.publicSlug || '')
     setPublicAdminEnabled(d.publicAdminEnabled === true)
   }
@@ -68,7 +67,7 @@ export default function EventEditor() {
   function buildData(slug) {
     const today = new Date().toISOString().substring(0, 10)
     const status = date < today ? 'past' : date === today ? 'live' : 'future'
-    return { name, date, eventType, status, links, waves, lanes, checklist, maps, selectedStaffIds, weightOverrides, publicSlug: slug, publicAdminEnabled }
+    return { name, date, eventType, status, links, waves, lanes, checklist, maps, selectedStaffIds, stationOverrides, publicSlug: slug, publicAdminEnabled }
   }
 
   async function saveEvent() {
@@ -172,7 +171,7 @@ export default function EventEditor() {
           <EventSetupTab
             maps={maps} setMaps={setMaps}
             selectedStaffIds={selectedStaffIds} setSelectedStaffIds={setSelectedStaffIds}
-            weightOverrides={weightOverrides} setWeightOverrides={setWeightOverrides}
+            stationOverrides={stationOverrides} setStationOverrides={setStationOverrides}
             config={config}
             onSave={saveEvent} saved={saved}
             eventId={eventId}
@@ -605,7 +604,7 @@ function TeamsTab({ eventId, lanes, config, eventType }) {
   )
 }
 
-function EventSetupTab({ maps, setMaps, selectedStaffIds, setSelectedStaffIds, weightOverrides, setWeightOverrides, config, onSave, saved, eventId }) {
+function EventSetupTab({ maps, setMaps, selectedStaffIds, setSelectedStaffIds, stationOverrides, setStationOverrides, config, onSave, saved, eventId }) {
   const [pickerOpen, setPickerOpen] = useState(null) // 'gymLayout' | 'runRoute' | null
 
   async function selectMap(type, url) {
@@ -706,11 +705,11 @@ function EventSetupTab({ maps, setMaps, selectedStaffIds, setSelectedStaffIds, w
         )}
       </Section>
 
-      <Section title="Weight Cheat Sheet">
+      <Section title="Stations">
         <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 12 }}>
-          Overrides apply to this event only. Leave blank to use global defaults.
+          Pulled live from Settings → Stations by default. Click "Customize for This Event" on a category to override it for this event only.
         </p>
-        <WeightCheatSheet config={config} overrides={weightOverrides} setOverrides={setWeightOverrides} />
+        <StationOverridesEditor config={config} overrides={stationOverrides} setOverrides={setStationOverrides} />
       </Section>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 24 }}>
@@ -719,6 +718,123 @@ function EventSetupTab({ maps, setMaps, selectedStaffIds, setSelectedStaffIds, w
       </div>
     </div>
   )
+}
+
+function StationOverridesEditor({ config, overrides, setOverrides }) {
+  const [expandedId, setExpandedId] = useState(null)
+  const categories = (config?.categories || []).filter(c => c.enabled !== false)
+
+  function globalStationsFor(catId) {
+    return config?.categoryStations?.[catId] || buildDefaultStations(catId, config?.weightCheatSheet?.[catId])
+  }
+
+  function enableOverride(catId) {
+    setOverrides(prev => ({ ...prev, [catId]: globalStationsFor(catId).map(s => ({ ...s })) }))
+  }
+
+  function revertToGlobal(catId) {
+    setOverrides(prev => {
+      const next = { ...prev }
+      delete next[catId]
+      return next
+    })
+  }
+
+  function updateStation(catId, idx, field, value) {
+    setOverrides(prev => ({
+      ...prev,
+      [catId]: prev[catId].map((s, i) => i === idx ? { ...s, [field]: value } : s),
+    }))
+  }
+
+  function addStation(catId) {
+    setOverrides(prev => ({
+      ...prev,
+      [catId]: [...(prev[catId] || []), { order: (prev[catId]?.length || 0) + 1, label: '', value: '' }],
+    }))
+  }
+
+  function removeStation(catId, idx) {
+    setOverrides(prev => ({
+      ...prev,
+      [catId]: prev[catId].filter((_, i) => i !== idx),
+    }))
+  }
+
+  return (
+    <div>
+      {categories.map(cat => {
+        const overridden = Object.prototype.hasOwnProperty.call(overrides || {}, cat.id)
+        const rows = overridden ? (overrides[cat.id] || []) : globalStationsFor(cat.id)
+        const isOpen = expandedId === cat.id
+        return (
+          <div key={cat.id} style={{ marginBottom: 8, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+            <div
+              style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+              onClick={() => setExpandedId(isOpen ? null : cat.id)}
+            >
+              <span style={{ fontFamily: 'var(--font-heading)', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{cat.label}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 11, color: overridden ? 'var(--color-accent)' : 'var(--color-text-muted)' }}>
+                  {overridden ? 'Custom for this event' : 'Using global default'}
+                </span>
+                <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{isOpen ? '▲' : '▼'}</span>
+              </span>
+            </div>
+            {isOpen && (
+              <div style={{ borderTop: '1px solid var(--color-border)', padding: 16 }}>
+                {!overridden && (
+                  <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 12 }}>
+                    Showing the live global default from Settings → Stations.
+                  </p>
+                )}
+                {rows.map((st, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-text-muted)', minWidth: 22, textAlign: 'right' }}>{st.order || i + 1}</span>
+                    <input
+                      value={st.label}
+                      disabled={!overridden}
+                      onChange={e => updateStation(cat.id, i, 'label', e.target.value)}
+                      style={{ ...stationInputStyle, flex: 1, opacity: overridden ? 1 : 0.6 }}
+                      placeholder="Station name"
+                    />
+                    <input
+                      value={st.value}
+                      disabled={!overridden}
+                      onChange={e => updateStation(cat.id, i, 'value', e.target.value)}
+                      style={{ ...stationInputStyle, width: 160, opacity: overridden ? 1 : 0.6 }}
+                      placeholder="e.g. 1000m / 102kg"
+                    />
+                    {overridden && (
+                      <button onClick={() => removeStation(cat.id, i)} style={iconBtnRed}>✕</button>
+                    )}
+                  </div>
+                ))}
+                <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                  {overridden ? (
+                    <>
+                      <button onClick={() => addStation(cat.id)} style={btnSecondary}>+ Add Station</button>
+                      <button onClick={() => revertToGlobal(cat.id)} style={btnSecondary}>Revert to Global Default</button>
+                    </>
+                  ) : (
+                    <button onClick={() => enableOverride(cat.id)} style={btnSecondary}>Customize for This Event</button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+const stationInputStyle = {
+  padding: '8px 10px',
+  background: 'var(--color-bg)',
+  border: '1px solid var(--color-border)',
+  color: 'var(--color-text)',
+  fontSize: 13,
 }
 
 function MapPicker({ label, url, onChoose, onClear }) {
