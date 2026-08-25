@@ -18,30 +18,6 @@ const TEXT     = '#f0f4f8'
 const MUTED    = '#7a9abe'
 const MUTED2   = '#5a7090'
 
-const STATION_ORDER = [
-  { key: 'run',          label: 'Run' },
-  { key: 'skiErg',       label: 'Ski Erg' },
-  { key: 'sledPush',     label: 'Sled Push' },
-  { key: 'sledPull',     label: 'Sled Pull' },
-  { key: 'burpee',       label: 'Burpee Broad Jump' },
-  { key: 'rowing',       label: 'Row Erg' },
-  { key: 'farmerCarry',  label: 'Farmers Carry' },
-  { key: 'lunge',        label: 'Walking Lunges' },
-  { key: 'wallBall',     label: 'Wall Ball' },
-]
-
-const HYBRID_STATION_ORDER = [
-  { key: 'run',           label: 'Run' },
-  { key: 'bikeErg',       label: 'Bike Erg' },
-  { key: 'sledCombined',  label: 'Sled Push/Pull' },
-  { key: 'rowing',        label: 'Row Erg' },
-  { key: 'farmerDeadlift', label: 'Farmers Deadlift' },
-  { key: 'skiErg',        label: 'Ski Erg' },
-  { key: 'lunge',         label: 'Walking Lunges' },
-  { key: 'burpee',        label: 'Burpee Broad Jump' },
-  { key: 'assaultBike',   label: 'Assault Bike' },
-]
-
 function catLabel(team, config) {
   const cats = config?.categories
   if (!cats) return team.competitionName || ''
@@ -136,11 +112,18 @@ export default function PublicEventPage() {
 
   const status = deriveStatus(event.date)
   const waves = (event.waves || []).sort((a, b) => a.startTime?.localeCompare(b.startTime))
-  const weightSheet = { ...(config?.weightCheatSheet || {}), ...(event.weightOverrides || {}) }
   const eventCatType = event.eventType === 'Hybrid' ? 'hybrid' : 'hyrox'
-  const weightCats = (config?.categories || []).filter(c =>
-    weightSheet[c.id] && (c.eventType || 'hyrox') === eventCatType
-  )
+  const stationCats = (config?.categories || [])
+    .filter(c => (c.eventType || 'hyrox') === eventCatType)
+    .map(cat => {
+      const override = event.stationOverrides?.[cat.id]
+      const source = (override && override.length > 0) ? override : (config?.categoryStations?.[cat.id] || [])
+      const stations = [...source]
+        .filter(s => (s.label || '').trim() || (s.value || '').trim())
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+      return { cat, stations }
+    })
+    .filter(x => x.stations.length > 0)
 
   const finishedTeams = teams.filter(t => t.finishTimeSeconds != null)
   const leaderboardByCategory = []
@@ -362,15 +345,12 @@ export default function PublicEventPage() {
           )}
 
           {/* Stations */}
-          {weightCats.length > 0 && (
+          {stationCats.length > 0 && (
             <Section title="Stations">
-              {weightCats.map(cat => {
-                const weights = weightSheet[cat.id] || {}
+              {stationCats.map(({ cat, stations }) => {
                 const isOpen = expandedWeights[cat.id]
-                const stationOrder = (cat.eventType === 'hybrid') ? HYBRID_STATION_ORDER : STATION_ORDER
-                const orderedEntries = stationOrder
-                  .map(({ key, label }) => weights[key] != null && weights[key] !== '' ? { key, label, val: weights[key] } : null)
-                  .filter(Boolean)
+                const half = Math.ceil(stations.length / 2)
+                const columns = [stations.slice(0, half), stations.slice(half)]
                 return (
                   <div key={cat.id} style={{ borderBottom: `1px solid ${BORDER}` }}>
                     <button
@@ -382,14 +362,14 @@ export default function PublicEventPage() {
                     </button>
                     {isOpen && (
                       <div style={{ padding: '0 20px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-                        {[orderedEntries.slice(0, 5), orderedEntries.slice(5)].map((col, ci) => (
+                        {columns.map((col, ci) => (
                           <div key={ci} style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 10 }}>
-                            {col.map(({ key, label, val }) => (
-                              <div key={key}>
+                            {col.map((s, i) => (
+                              <div key={`${s.order}-${i}`}>
                                 <div style={{ fontSize: 10, color: MUTED2, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>
-                                  {label}
+                                  {s.label}
                                 </div>
-                                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 14, color: ACCENT, fontWeight: 500 }}>{val}</div>
+                                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 14, color: ACCENT, fontWeight: 500 }}>{s.value}</div>
                               </div>
                             ))}
                           </div>
