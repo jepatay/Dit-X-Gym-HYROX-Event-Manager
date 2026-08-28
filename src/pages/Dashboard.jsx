@@ -149,6 +149,7 @@ export default function Dashboard() {
                     <ActionLink to={`/event/${event.id}`}>Edit</ActionLink>
                     <ActionLink to={`/event/${event.id}/qr`}>QR Code</ActionLink>
                     <LinkWithCopy to={`/event/${event.id}/admin`} label="Admin" />
+                    <LinkWithCopy to={`/event/${event.id}/checklist`} label="Checklist" />
                     <LinkWithCopy to={`/event/${event.id}/tv`} label="TV ↗" external />
                     {event.publicSlug && (
                       <LinkWithCopy to={`/e/${event.publicSlug}`} label="Public ↗" external />

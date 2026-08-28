@@ -39,6 +39,7 @@ export default function EventEditor() {
   const [stationOverrides, setStationOverrides] = useState({})
   const [publicSlug, setPublicSlug] = useState('')
   const [publicAdminEnabled, setPublicAdminEnabled] = useState(false)
+  const [publicChecklistEnabled, setPublicChecklistEnabled] = useState(false)
 
   useEffect(() => {
     getOrCreateConfig().then(setConfig)
@@ -62,12 +63,13 @@ export default function EventEditor() {
     setStationOverrides(d.stationOverrides || {})
     setPublicSlug(d.publicSlug || '')
     setPublicAdminEnabled(d.publicAdminEnabled === true)
+    setPublicChecklistEnabled(d.publicChecklistEnabled === true)
   }
 
   function buildData(slug) {
     const today = new Date().toISOString().substring(0, 10)
     const status = date < today ? 'past' : date === today ? 'live' : 'future'
-    return { name, date, eventType, status, links, waves, lanes, checklist, maps, selectedStaffIds, stationOverrides, publicSlug: slug, publicAdminEnabled }
+    return { name, date, eventType, status, links, waves, lanes, checklist, maps, selectedStaffIds, stationOverrides, publicSlug: slug, publicAdminEnabled, publicChecklistEnabled }
   }
 
   async function saveEvent() {
@@ -90,6 +92,14 @@ export default function EventEditor() {
     setPublicAdminEnabled(next)
     if (eventId) {
       await updateDoc(doc(db, 'events', eventId), { publicAdminEnabled: next })
+    }
+  }
+
+  async function togglePublicChecklist() {
+    const next = !publicChecklistEnabled
+    setPublicChecklistEnabled(next)
+    if (eventId) {
+      await updateDoc(doc(db, 'events', eventId), { publicChecklistEnabled: next })
     }
   }
 
@@ -155,6 +165,8 @@ export default function EventEditor() {
             eventId={eventId}
             publicAdminEnabled={publicAdminEnabled}
             onTogglePublicAdmin={togglePublicAdmin}
+            publicChecklistEnabled={publicChecklistEnabled}
+            onTogglePublicChecklist={togglePublicChecklist}
           />
         )}
         {tab === 1 && (
@@ -182,7 +194,10 @@ export default function EventEditor() {
   )
 }
 
-function InfoTab({ name, setName, date, setDate, eventType, setEventType, lanes, setLanes, links, setLinks, onSave, saved, eventId, publicAdminEnabled, onTogglePublicAdmin }) {
+function InfoTab({
+  name, setName, date, setDate, eventType, setEventType, lanes, setLanes, links, setLinks, onSave, saved, eventId,
+  publicAdminEnabled, onTogglePublicAdmin, publicChecklistEnabled, onTogglePublicChecklist,
+}) {
   return (
     <div style={{ maxWidth: 620 }}>
       <Field label="Event Name">
@@ -303,7 +318,55 @@ function InfoTab({ name, setName, date, setDate, eventType, setEventType, lanes,
                 <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
                   Anyone with this link can check athletes in and record finish times — no login needed. Switch back to "Login Required" any time to cut off access.
                 </p>
-                <AdminLinkCopy eventId={eventId} />
+                <LinkCopy path={`/event/${eventId}/admin`} />
+              </>
+            )}
+          </div>
+        )}
+      </Field>
+      <Field label="Checklist Access">
+        {!eventId ? (
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Save the event first to enable link-based checklist access.</p>
+        ) : (
+          <div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <button
+                type="button"
+                onClick={() => publicChecklistEnabled && onTogglePublicChecklist()}
+                style={{
+                  padding: '8px 18px',
+                  background: !publicChecklistEnabled ? 'var(--color-accent)' : 'transparent',
+                  border: '1px solid ' + (!publicChecklistEnabled ? 'var(--color-accent)' : 'var(--color-border)'),
+                  color: !publicChecklistEnabled ? '#fff' : 'var(--color-text)',
+                  fontFamily: 'var(--font-heading)',
+                  fontSize: 13,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  cursor: 'pointer',
+                }}
+              >Login Required</button>
+              <button
+                type="button"
+                onClick={() => !publicChecklistEnabled && onTogglePublicChecklist()}
+                style={{
+                  padding: '8px 18px',
+                  background: publicChecklistEnabled ? 'var(--color-success)' : 'transparent',
+                  border: '1px solid ' + (publicChecklistEnabled ? 'var(--color-success)' : 'var(--color-border)'),
+                  color: publicChecklistEnabled ? '#fff' : 'var(--color-text)',
+                  fontFamily: 'var(--font-heading)',
+                  fontSize: 13,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  cursor: 'pointer',
+                }}
+              >Link Access (No Login)</button>
+            </div>
+            {publicChecklistEnabled && (
+              <>
+                <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+                  Anyone with this link can view and check off the event checklist — no login needed. Switch back to "Login Required" any time to cut off access.
+                </p>
+                <LinkCopy path={`/event/${eventId}/checklist`} />
               </>
             )}
           </div>
@@ -317,13 +380,13 @@ function InfoTab({ name, setName, date, setDate, eventType, setEventType, lanes,
   )
 }
 
-function AdminLinkCopy({ eventId }) {
+function LinkCopy({ path }) {
   const [copied, setCopied] = useState(false)
   const baseUrl = import.meta.env.VITE_PUBLIC_BASE_URL || window.location.origin
-  const adminUrl = `${baseUrl}/event/${eventId}/admin`
+  const url = `${baseUrl}${path}`
 
   function handleCopy() {
-    navigator.clipboard.writeText(adminUrl).then(() => {
+    navigator.clipboard.writeText(url).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
@@ -331,7 +394,7 @@ function AdminLinkCopy({ eventId }) {
 
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-      <input readOnly value={adminUrl} style={{ ...inputStyle, width: 'auto', flex: 1, minWidth: 200, color: 'var(--color-text-muted)' }} onFocus={e => e.target.select()} />
+      <input readOnly value={url} style={{ ...inputStyle, width: 'auto', flex: 1, minWidth: 200, color: 'var(--color-text-muted)' }} onFocus={e => e.target.select()} />
       <button type="button" onClick={handleCopy} style={btnSecondary}>{copied ? 'Copied!' : 'Copy Link'}</button>
     </div>
   )
