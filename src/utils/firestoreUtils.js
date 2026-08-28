@@ -114,22 +114,54 @@ export const DEFAULT_CONFIG = {
     },
   ],
   checklistItems: [
-    { id: 'cl_1', category: 'Setup', order: 1, text: 'Confirm date and venue availability' },
-    { id: 'cl_2', category: 'Setup', order: 2, text: 'Define categories and wave schedule' },
-    { id: 'cl_3', category: 'Equipment', order: 3, text: 'SkiErg checked and calibrated' },
-    { id: 'cl_4', category: 'Equipment', order: 4, text: 'Sleds loaded to correct weight per category' },
-    { id: 'cl_5', category: 'Equipment', order: 5, text: 'Rowing machines set and tested' },
-    { id: 'cl_6', category: 'Equipment', order: 6, text: 'Sandbags at correct weight per category' },
-    { id: 'cl_7', category: 'Equipment', order: 7, text: 'Wall balls at correct weight per category' },
-    { id: 'cl_8', category: 'Equipment', order: 8, text: 'Farmers carry handles and weights prepared' },
-    { id: 'cl_9', category: 'Logistics', order: 9, text: 'Start list printed per category' },
-    { id: 'cl_10', category: 'Logistics', order: 10, text: 'Bib numbers assigned (starting from 100)' },
-    { id: 'cl_11', category: 'Logistics', order: 11, text: 'Timer / stopwatch ready' },
-    { id: 'cl_12', category: 'Logistics', order: 12, text: 'Results device ready for time entry' },
-    { id: 'cl_13', category: 'Communication', order: 13, text: 'Athletes notified of start times' },
-    { id: 'cl_14', category: 'Communication', order: 14, text: 'Coaches briefed on wave schedule' },
-    { id: 'cl_15', category: 'Post-event', order: 15, text: 'Results entered and saved' },
-    { id: 'cl_16', category: 'Post-event', order: 16, text: 'Equipment cleaned and stored' },
+    { id: 'cl_1',  category: 'Common Areas', order: 1,  text: 'Draw event map on blackboard' },
+    { id: 'cl_2',  category: 'Common Areas', order: 2,  text: 'Write station order on blackboard (separate board)' },
+    { id: 'cl_3',  category: 'Common Areas', order: 3,  text: 'Mark running-direction arrows' },
+    { id: 'cl_4',  category: 'Common Areas', order: 4,  text: 'Set up cones for running direction' },
+    { id: 'cl_5',  category: 'Common Areas', order: 5,  text: 'Tape/mark start line' },
+    { id: 'cl_6',  category: 'Common Areas', order: 6,  text: 'Tape/mark finish line' },
+    { id: 'cl_7',  category: 'Common Areas', order: 7,  text: 'Buzzer/finish area: set up box jumps' },
+    { id: 'cl_8',  category: 'Common Areas', order: 8,  text: 'Set up hydration table' },
+    { id: 'cl_9',  category: 'Common Areas', order: 9,  text: 'Set up post-run table (bars, drinks)' },
+    { id: 'cl_10', category: 'Common Areas', order: 10, text: 'Set up HYROX backdrop' },
+    { id: 'cl_11', category: 'Common Areas', order: 11, text: 'Set up welcome area (screen + power outlet)' },
+    { id: 'cl_12', category: 'Common Areas', order: 12, text: 'Prepare music playlist' },
+    { id: 'cl_13', category: 'Common Areas', order: 13, text: 'Clear/relocate other gym equipment (bikes, etc.) out of event space' },
+
+    { id: 'cl_14', category: 'Run', order: 14, text: 'Mark starting line' },
+    { id: 'cl_15', category: 'Run', order: 15, text: 'Mark 250m cone' },
+
+    { id: 'cl_16', category: 'Station 1 — SkiErg', order: 16, text: 'Tape instructions' },
+
+    { id: 'cl_17', category: 'Station 2 — Sled Push', order: 17, text: 'Tape instructions' },
+    { id: 'cl_18', category: 'Station 2 — Sled Push', order: 18, text: 'Lay down carpet' },
+    { id: 'cl_19', category: 'Station 2 — Sled Push', order: 19, text: 'Chalk distance lines' },
+    { id: 'cl_20', category: 'Station 2 — Sled Push', order: 20, text: 'Prepare sleds' },
+
+    { id: 'cl_21', category: 'Station 3 — Sled Pull', order: 21, text: 'Tape instructions to ground' },
+    { id: 'cl_22', category: 'Station 3 — Sled Pull', order: 22, text: 'Lay down carpet' },
+    { id: 'cl_23', category: 'Station 3 — Sled Pull', order: 23, text: 'Chalk lanes' },
+    { id: 'cl_24', category: 'Station 3 — Sled Pull', order: 24, text: "Prepare weights (men's/women's)" },
+
+    { id: 'cl_25', category: 'Station 4 — Burpee Broad Jumps', order: 25, text: 'Tape instructions to ground' },
+    { id: 'cl_26', category: 'Station 4 — Burpee Broad Jumps', order: 26, text: 'Tape floor to mark lanes' },
+
+    { id: 'cl_27', category: 'Station 5 — Rowing', order: 27, text: 'Tape instructions to ground' },
+    { id: 'cl_28', category: 'Station 5 — Rowing', order: 28, text: 'Prepare rowing machines' },
+
+    { id: 'cl_29', category: 'Station 6 — Farmers Carry', order: 29, text: 'Tape instructions to ground (distances/reps by category)' },
+    { id: 'cl_30', category: 'Station 6 — Farmers Carry', order: 30, text: 'Tape floor to mark lanes' },
+    { id: 'cl_31', category: 'Station 6 — Farmers Carry', order: 31, text: 'Prepare cones (lane limits)' },
+    { id: 'cl_32', category: 'Station 6 — Farmers Carry', order: 32, text: 'Prepare kettlebells' },
+
+    { id: 'cl_33', category: 'Station 7 — Lunges (Sandbag)', order: 33, text: 'Tape instructions to ground' },
+    { id: 'cl_34', category: 'Station 7 — Lunges (Sandbag)', order: 34, text: 'Tape floor to mark lanes' },
+    { id: 'cl_35', category: 'Station 7 — Lunges (Sandbag)', order: 35, text: 'Prepare sandbags' },
+
+    { id: 'cl_36', category: 'Station 8 — Wall Balls', order: 36, text: 'Tape instructions to ground (distances/reps by category)' },
+    { id: 'cl_37', category: 'Station 8 — Wall Balls', order: 37, text: 'Prepare wall balls, slam balls' },
+
+    { id: 'cl_38', category: 'Warm-Up Area', order: 38, text: 'Prepare warm-up equipment (rower, wall balls, sandbags, etc.)' },
   ],
 }
 

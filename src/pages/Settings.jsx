@@ -265,18 +265,27 @@ function StationsTab({ config, onSave, saved }) {
   )
 }
 
+const NEW_CATEGORY_OPTION = '__new__'
+
 function ChecklistTab({ config, onSave, saved }) {
   const [items, setItems] = useState(config?.checklistItems || [])
   const [newText, setNewText] = useState('')
-  const [newCat, setNewCat] = useState('Setup')
+  const [newCat, setNewCat] = useState(items[0]?.category || NEW_CATEGORY_OPTION)
+  const [customCat, setCustomCat] = useState('')
 
   const categories = [...new Set(items.map(i => i.category))]
+  const addingNewCat = newCat === NEW_CATEGORY_OPTION
 
   function addItem() {
-    if (!newText.trim()) return
+    const category = addingNewCat ? customCat.trim() : newCat
+    if (!newText.trim() || !category) return
     const id = `cl_custom_${Date.now()}`
-    setItems(prev => [...prev, { id, category: newCat, order: prev.length + 1, text: newText.trim() }])
+    setItems(prev => [...prev, { id, category, order: prev.length + 1, text: newText.trim() }])
     setNewText('')
+    if (addingNewCat) {
+      setNewCat(category)
+      setCustomCat('')
+    }
   }
 
   function removeItem(id) {
@@ -284,8 +293,17 @@ function ChecklistTab({ config, onSave, saved }) {
     setItems(prev => prev.filter(i => i.id !== id))
   }
 
+  function resetToDefaults() {
+    if (!confirm('Reset checklist to defaults? Custom items will be lost.')) return
+    setItems(DEFAULT_CONFIG.checklistItems)
+    setNewCat(DEFAULT_CONFIG.checklistItems[0]?.category || NEW_CATEGORY_OPTION)
+  }
+
   return (
     <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
+        <button onClick={resetToDefaults} style={btnSecondary}>Reset to Defaults</button>
+      </div>
       {categories.map(cat => (
         <div key={cat} style={{ marginBottom: 24 }}>
           <h3 style={{ fontSize: 14, color: 'var(--color-text-muted)', marginBottom: 10 }}>{cat}</h3>
@@ -297,10 +315,20 @@ function ChecklistTab({ config, onSave, saved }) {
           ))}
         </div>
       ))}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        <select value={newCat} onChange={e => setNewCat(e.target.value)} style={{ ...selectStyle, minWidth: 120 }}>
-          {[...categories, 'New Category'].map(c => <option key={c} value={c}>{c}</option>)}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <select value={newCat} onChange={e => setNewCat(e.target.value)} style={{ ...selectStyle, minWidth: 140 }}>
+          {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          <option value={NEW_CATEGORY_OPTION}>+ New category...</option>
         </select>
+        {addingNewCat && (
+          <input
+            value={customCat}
+            onChange={e => setCustomCat(e.target.value)}
+            placeholder="New category name..."
+            style={{ ...inputStyle, minWidth: 180 }}
+            onKeyDown={e => e.key === 'Enter' && addItem()}
+          />
+        )}
         <input value={newText} onChange={e => setNewText(e.target.value)} placeholder="New checklist item..." style={{ ...inputStyle, flex: 1, minWidth: 200 }} onKeyDown={e => e.key === 'Enter' && addItem()} />
         <button onClick={addItem} style={btnSecondary}>+ Add</button>
       </div>
