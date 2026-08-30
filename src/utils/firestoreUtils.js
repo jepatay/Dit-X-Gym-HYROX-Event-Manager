@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 
 export function buildDefaultStations(catId, weights) {
@@ -163,24 +163,6 @@ export const DEFAULT_CONFIG = {
 
     { id: 'cl_38', category: 'Warm-Up Area', order: 38, text: 'Prepare warm-up equipment (rower, wall balls, sandbags, etc.)' },
   ],
-  // Physical setup capacity per station — used by the Overlap Risk tab to reason about
-  // congestion when a faster wave catches up to a slower one at a shared station.
-  stationCapacities: {
-    skiErg: 4,
-    sledPush: 4,
-    sledPull: 4,
-    burpee: 4,
-    rowing: 8,
-    farmersCarryLanes: 10,
-    farmersCarryMenSets: 5,
-    farmersCarryWomenSets: 5,
-    lungesLanes: 6,
-    lungesMenSets: 5,
-    lungesWomenSets: 5,
-    wallBallLocations: 12,
-  },
-  // Organizer's own persistent notes on wave-overlap risk, reused across every event.
-  riskNotes: '',
 }
 
 export async function getOrCreateConfig() {
@@ -240,35 +222,8 @@ export async function getOrCreateConfig() {
     }
   }
 
-  // Seed station capacities the first time (won't overwrite values the organizer already set)
-  let stationCapacities = data.stationCapacities
-  if (!stationCapacities) {
-    stationCapacities = DEFAULT_CONFIG.stationCapacities
-    dirty = true
-  }
-
   if (!dirty) return data
-  const updated = { ...data, categories, weightCheatSheet: weights, categoryStations: updatedStations, stationCapacities }
+  const updated = { ...data, categories, weightCheatSheet: weights, categoryStations: updatedStations }
   await setDoc(ref, updated)
   return updated
-}
-
-// Historical average finish time per category, across all events, for the Overlap Risk tab.
-export async function getCategoryAverages() {
-  const snap = await getDocs(collection(db, 'teams'))
-  const sums = {}
-  snap.docs.forEach(d => {
-    const t = d.data()
-    if (t.finishTimeSeconds == null) return
-    const key = t.categoryId || t.competitionName
-    if (!key) return
-    if (!sums[key]) sums[key] = { total: 0, count: 0, label: t.competitionName || key }
-    sums[key].total += t.finishTimeSeconds
-    sums[key].count += 1
-  })
-  const result = {}
-  for (const [key, { total, count, label }] of Object.entries(sums)) {
-    result[key] = { avgSeconds: Math.round(total / count), count, label }
-  }
-  return result
 }

@@ -8,7 +8,7 @@ import NavBar from '../components/NavBar'
 import SaveConfirmation from '../components/SaveConfirmation'
 import { DEFAULT_CONFIG, getOrCreateConfig, buildDefaultStations } from '../utils/firestoreUtils'
 
-const TABS = ['Categories', 'Stations', 'Checklist', 'Risk Planning', 'Staff', 'Admin Users', 'Pictures']
+const TABS = ['Categories', 'Stations', 'Checklist', 'Staff', 'Admin Users', 'Pictures']
 
 export default function Settings() {
   const [tab, setTab] = useState(0)
@@ -62,10 +62,9 @@ export default function Settings() {
         {tab === 0 && <CategoriesTab config={config} onSave={saveConfig} saved={saved} />}
         {tab === 1 && <StationsTab config={config} onSave={saveConfig} saved={saved} />}
         {tab === 2 && <ChecklistTab config={config} onSave={saveConfig} saved={saved} />}
-        {tab === 3 && <RiskPlanningTab config={config} onSave={saveConfig} saved={saved} />}
-        {tab === 4 && <StaffTab config={config} onSave={saveConfig} saved={saved} />}
-        {tab === 5 && <AdminUsersTab />}
-        {tab === 6 && <PicturesTab config={config} onSave={saveConfig} />}
+        {tab === 3 && <StaffTab config={config} onSave={saveConfig} saved={saved} />}
+        {tab === 4 && <AdminUsersTab />}
+        {tab === 5 && <PicturesTab config={config} onSave={saveConfig} />}
       </div>
     </div>
   )
@@ -353,70 +352,6 @@ function ChecklistTab({ config, onSave, saved }) {
         <button onClick={addItem} style={btnSecondary}>+ Add</button>
       </div>
       <SaveBar onSave={() => onSave({ ...config, checklistItems: items })} saved={saved} />
-    </div>
-  )
-}
-
-const CAPACITY_FIELDS = [
-  { key: 'skiErg', label: 'SkiErg machines' },
-  { key: 'sledPush', label: 'Sled Push lanes' },
-  { key: 'sledPull', label: 'Sled Pull lanes' },
-  { key: 'burpee', label: 'Burpee Broad Jump lanes' },
-  { key: 'rowing', label: 'Rowing machines' },
-  { key: 'farmersCarryLanes', label: 'Farmers Carry lanes' },
-  { key: 'farmersCarryMenSets', label: "Farmers Carry — men's KB sets" },
-  { key: 'farmersCarryWomenSets', label: "Farmers Carry — women's KB sets" },
-  { key: 'lungesLanes', label: 'Sandbag Lunges lanes' },
-  { key: 'lungesMenSets', label: "Sandbag Lunges — men's sets" },
-  { key: 'lungesWomenSets', label: "Sandbag Lunges — women's sets" },
-  { key: 'wallBallLocations', label: 'Wall Ball locations' },
-]
-
-function RiskPlanningTab({ config, onSave, saved }) {
-  const [capacities, setCapacities] = useState({ ...DEFAULT_CONFIG.stationCapacities, ...(config?.stationCapacities || {}) })
-  const [notes, setNotes] = useState(config?.riskNotes || '')
-
-  function updateCapacity(key, value) {
-    setCapacities(prev => ({ ...prev, [key]: value === '' ? '' : Number(value) }))
-  }
-
-  return (
-    <div>
-      <p style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 20 }}>
-        Physical setup capacity at your venue, and your own notes on wave-overlap risk. Both are used as context
-        by the "Overlap Risk" chat on each event, so you don't have to re-explain your venue every time.
-      </p>
-
-      <div style={{ fontSize: 11, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)', marginBottom: 12 }}>
-        Station Capacities
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10, marginBottom: 28 }}>
-        {CAPACITY_FIELDS.map(f => (
-          <div key={f.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-            <span style={{ fontSize: 13 }}>{f.label}</span>
-            <input
-              type="number"
-              min="0"
-              value={capacities[f.key] ?? ''}
-              onChange={e => updateCapacity(f.key, e.target.value)}
-              style={{ ...inputStyle, width: 64, textAlign: 'right' }}
-            />
-          </div>
-        ))}
-      </div>
-
-      <div style={{ fontSize: 11, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)', marginBottom: 12 }}>
-        Rules of Thumb (persistent notes)
-      </div>
-      <textarea
-        value={notes}
-        onChange={e => setNotes(e.target.value)}
-        rows={8}
-        placeholder={'e.g. Farmers Carry is fine unless both waves are on Men\'s weight — we have separate KB sets for men and women.'}
-        style={{ ...inputStyle, width: '100%', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 24 }}
-      />
-
-      <SaveBar onSave={() => onSave({ ...config, stationCapacities: capacities, riskNotes: notes })} saved={saved} />
     </div>
   )
 }

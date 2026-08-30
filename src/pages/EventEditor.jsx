@@ -11,10 +11,9 @@ import ChecklistPanel from '../components/ChecklistPanel'
 import TeamForm from '../components/TeamForm'
 import SaveConfirmation from '../components/SaveConfirmation'
 import { generateSlug } from '../utils/slugUtils'
-import { getOrCreateConfig, buildDefaultStations, getCategoryAverages } from '../utils/firestoreUtils'
-import { secondsToHHMMSS } from '../utils/timeUtils'
+import { getOrCreateConfig, buildDefaultStations } from '../utils/firestoreUtils'
 
-const TABS = ['Info', 'Teams', 'Checklist', 'Event Setup', 'Overlap Risk']
+const TABS = ['Info', 'Teams', 'Checklist', 'Event Setup']
 
 export default function EventEditor() {
   const { id } = useParams()
@@ -104,11 +103,6 @@ export default function EventEditor() {
     }
   }
 
-  async function saveGlobalConfig(updated) {
-    await setDoc(doc(db, 'config', 'main'), updated)
-    setConfig(updated)
-  }
-
   return (
     <div>
       <NavBar />
@@ -193,16 +187,6 @@ export default function EventEditor() {
             config={config}
             onSave={saveEvent} saved={saved}
             eventId={eventId}
-          />
-        )}
-        {tab === 4 && (
-          <RiskTab
-            eventId={eventId}
-            eventName={name}
-            date={date}
-            lanes={lanes}
-            config={config}
-            onSaveConfig={saveGlobalConfig}
           />
         )}
       </div>
@@ -679,184 +663,6 @@ function TeamsTab({ eventId, lanes, config, eventType, timeSlots, setTimeSlots }
           </div>
         )}
       </div>
-    </div>
-  )
-}
-
-function buildScheduleContext(teams, config, averages) {
-  const map = {}
-  for (const t of teams) {
-    const catLabel = (config?.categories || []).find(c => c.id === t.categoryId)?.label || t.competitionName || 'Unknown'
-    const key = `${t.scheduledTime || '?'}|${catLabel}`
-    if (!map[key]) map[key] = { time: t.scheduledTime || '?', category: catLabel, categoryId: t.categoryId, count: 0 }
-    map[key].count++
-  }
-  return Object.values(map)
-    .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
-    .map(row => {
-      const avg = (row.categoryId && averages[row.categoryId]) || averages[row.category]
-      return {
-        ...row,
-        avgSeconds: avg?.avgSeconds ?? null,
-        avgLabel: avg ? secondsToHHMMSS(avg.avgSeconds) : 'No historical data yet',
-      }
-    })
-}
-
-function RiskTab({ eventId, eventName, date, lanes, config, onSaveConfig }) {
-  const [teams, setTeams] = useState([])
-  const [averages, setAverages] = useState({})
-  const [loading, setLoading] = useState(true)
-  const [messages, setMessages] = useState([])
-  const [input, setInput] = useState('')
-  const [sending, setSending] = useState(false)
-  const [notes, setNotes] = useState(config?.riskNotes || '')
-  const [notesSaved, setNotesSaved] = useState(0)
-
-  useEffect(() => {
-    if (!eventId) { setLoading(false); return }
-    async function load() {
-      setLoading(true)
-      const [teamsSnap, avg] = await Promise.all([
-        getDocs(query(collection(db, 'teams'), where('eventId', '==', eventId))),
-        getCategoryAverages(),
-      ])
-      setTeams(teamsSnap.docs.map(d => ({ id: d.id, ...d.data() })))
-      setAverages(avg)
-      setLoading(false)
-    }
-    load()
-  }, [eventId])
-
-  useEffect(() => { setNotes(config?.riskNotes || '') }, [config?.riskNotes])
-
-  const schedule = buildScheduleContext(teams, config, averages)
-
-  async function saveNotes() {
-    await onSaveConfig({ ...config, riskNotes: notes })
-    setNotesSaved(s => s + 1)
-  }
-
-  function saveReplyToNotes(content) {
-    const stamped = `— ${new Date().toISOString().slice(0, 10)} (${eventName || 'event'}): ${content}`
-    setNotes(prev => (prev ? prev + '\n\n' : '') + stamped)
-  }
-
-  async function send() {
-    if (!input.trim() || sending) return
-    const next = [...messages, { role: 'user', content: input.trim() }]
-    setMessages(next)
-    setInput('')
-    setSending(true)
-    try {
-      const res = await fetch('/api/risk-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: next,
-          context: {
-            eventName, eventDate: date, lanes,
-            waves: schedule.map(({ time, category, count, avgSeconds, avgLabel }) => ({ time, category, athletes: count, avgFinishTime: avgLabel, avgFinishSeconds: avgSeconds })),
-            stationCapacities: config?.stationCapacities || {},
-            riskNotes: notes,
-          },
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Request failed')
-      setMessages(m => [...m, { role: 'assistant', content: data.reply }])
-    } catch (err) {
-      setMessages(m => [...m, { role: 'assistant', content: `⚠️ ${err.message}` }])
-    } finally {
-      setSending(false)
-    }
-  }
-
-  if (!eventId) return <p style={{ color: 'var(--color-text-muted)', padding: '24px 0' }}>Save the event first.</p>
-
-  return (
-    <div>
-      <Section title="Wave Schedule & Historical Pace">
-        {loading ? (
-          <p style={{ color: 'var(--color-text-muted)' }}>Loading...</p>
-        ) : schedule.length === 0 ? (
-          <p style={{ color: 'var(--color-text-muted)' }}>No teams scheduled yet — add teams in the Teams tab first.</p>
-        ) : (
-          <div style={{ overflowX: 'auto', marginBottom: 8 }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ textAlign: 'left', color: 'var(--color-text-muted)', fontSize: 11, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  <th style={{ padding: '6px 8px' }}>Time</th>
-                  <th style={{ padding: '6px 8px' }}>Category</th>
-                  <th style={{ padding: '6px 8px' }}>Athletes</th>
-                  <th style={{ padding: '6px 8px' }}>Avg. Finish Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {schedule.map((row, i) => (
-                  <tr key={i} style={{ borderTop: '1px solid var(--color-border)' }}>
-                    <td style={{ padding: '6px 8px', fontFamily: 'var(--font-mono)' }}>{row.time}</td>
-                    <td style={{ padding: '6px 8px' }}>{row.category}</td>
-                    <td style={{ padding: '6px 8px' }}>{row.count}</td>
-                    <td style={{ padding: '6px 8px', fontFamily: 'var(--font-mono)', color: row.avgSeconds ? 'var(--color-text)' : 'var(--color-text-muted)' }}>{row.avgLabel}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Section>
-
-      <Section title="Rules of Thumb (persistent notes)">
-        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
-          Shared across every event — also editable in <a href="/settings" style={{ color: 'var(--color-accent)' }}>Settings → Risk Planning</a>, alongside station capacities.
-          The assistant below reads these every time, so you don't need to re-explain your venue.
-        </p>
-        <textarea
-          value={notes}
-          onChange={e => setNotes(e.target.value)}
-          rows={5}
-          style={{ ...inputStyle, width: '100%', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
-        />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 8 }}>
-          <button type="button" onClick={saveNotes} style={btnSecondary}>Save Notes</button>
-          <SaveConfirmation trigger={notesSaved} />
-        </div>
-      </Section>
-
-      <Section title="Discuss Overlap Risk">
-        <div style={{ border: '1px solid var(--color-border)', background: 'var(--color-surface)', padding: 16, marginBottom: 12, maxHeight: 440, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {messages.length === 0 && (
-            <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>
-              Ask about this event's wave schedule — e.g. "Is the 08:10 Half Single Men wave going to catch the 08:00 Single Women wave at the sleds?"
-            </p>
-          )}
-          {messages.map((m, i) => (
-            <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
-              <div style={{
-                background: m.role === 'user' ? 'var(--color-accent)' : 'var(--color-surface-raised)',
-                color: m.role === 'user' ? '#fff' : 'var(--color-text)',
-                border: m.role === 'user' ? 'none' : '1px solid var(--color-border)',
-                padding: '10px 14px', fontSize: 14, whiteSpace: 'pre-wrap',
-              }}>{m.content}</div>
-              {m.role === 'assistant' && (
-                <button type="button" onClick={() => saveReplyToNotes(m.content)} style={{ ...btnSecondary, marginTop: 4, fontSize: 10, padding: '4px 10px' }}>+ Save to notes</button>
-              )}
-            </div>
-          ))}
-          {sending && <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Thinking…</p>}
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && send()}
-            placeholder="Ask about wave overlap risk..."
-            style={{ ...inputStyle, flex: 1 }}
-          />
-          <button type="button" onClick={send} disabled={sending || !input.trim()} style={{ ...btnPrimary, opacity: (sending || !input.trim()) ? 0.5 : 1 }}>Send</button>
-        </div>
-      </Section>
     </div>
   )
 }
