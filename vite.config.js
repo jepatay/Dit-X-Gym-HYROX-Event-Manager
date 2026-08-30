@@ -4,6 +4,11 @@ import { copyFileSync } from 'fs'
 import { resolve } from 'path'
 
 export default defineConfig({
+  server: {
+    proxy: {
+      '/api': 'http://localhost:3000',
+    },
+  },
   plugins: [
     react(),
     {

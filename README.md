@@ -7,10 +7,11 @@ Internal event management system for [Dit X-Gym](https://ditxgym.dk) — a certi
 ## Stack
 
 - **Frontend**: React + Vite
+- **Backend**: Node/Express (`server/index.js`) — serves the built frontend and proxies the Overlap Risk chat to OpenAI (keeps the API key off the client)
 - **Database**: Firebase Firestore
 - **Auth**: Firebase Auth (Email/Password)
 - **Storage**: Firebase Storage
-- **Hosting**: Render.com (static site)
+- **Hosting**: Render.com (Web Service)
 
 ---
 
@@ -61,12 +62,19 @@ service firebase.storage {
 
 ## Render Deploy
 
+The app is a Node **Web Service** on Render (not a static site) — it needs a running server to proxy the
+Overlap Risk chat to OpenAI without exposing the API key to the browser.
+
 1. Push project to GitHub
-2. Render → New → Static Site → connect repo
-3. **Build command**: `npm run build`
-4. **Publish directory**: `dist`
+2. Render → New → Web Service → connect repo
+3. **Build command**: `npm install && npm run build`
+4. **Start command**: `npm start`
 5. Add all `VITE_` env vars from `.env.example` in Render → Environment
-6. Deploy
+6. Add `OPENAI_API_KEY` (and optionally `OPENAI_MODEL`, default `gpt-4o-mini`) — server-side only, no `VITE_` prefix
+7. Deploy
+
+> If your service was previously a Static Site, switch it to a Web Service (or create a new one) —
+> Static Sites can't run the Express server this app now needs.
 
 ---
 
@@ -74,10 +82,12 @@ service firebase.storage {
 
 ```bash
 cp .env.example .env
-# Fill in your Firebase config values in .env
+# Fill in your Firebase config values in .env, and OPENAI_API_KEY if you want the
+# Overlap Risk chat to work locally
 
 npm install
-npm run dev
+npm run dev      # Vite dev server (proxies /api/* to the server below)
+npm run server   # in a second terminal — Express server for the chat API
 ```
 
 ---
@@ -93,6 +103,8 @@ npm run dev
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | Firebase messaging sender ID |
 | `VITE_FIREBASE_APP_ID` | Firebase app ID |
 | `VITE_PUBLIC_BASE_URL` | Full URL of your Render deployment (e.g. `https://ditxgym-hyrox.onrender.com`) |
+| `OPENAI_API_KEY` | Server-side only. Powers the Overlap Risk chat tab. Without it, that tab still shows the schedule/notes, chat just returns an error. |
+| `OPENAI_MODEL` | Server-side only. Optional, defaults to `gpt-4o-mini`. |
 
 > Never commit `.env` — it is in `.gitignore`
 
@@ -105,7 +117,7 @@ npm run dev
 | `/login` | Coach login | Public |
 | `/` | Event dashboard | Protected |
 | `/event/new` | Create event | Protected |
-| `/event/:id` | Edit event (tabs: Info, Waves, Teams, Checklist, Setup) | Protected |
+| `/event/:id` | Edit event (tabs: Info, Teams, Checklist, Event Setup, Overlap Risk) | Protected |
 | `/event/:id/checkin` | Check-in athletes on competition day | Protected |
 | `/event/:id/qr` | QR code generator + print | Protected |
 | `/event/:id/startlist` | Printable start list | Protected |
