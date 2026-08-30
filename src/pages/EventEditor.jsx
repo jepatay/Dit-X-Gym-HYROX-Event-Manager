@@ -193,6 +193,7 @@ export default function EventEditor() {
             checklist={checklist} setChecklist={setChecklist}
             config={config}
             onSave={saveEvent} saved={saved}
+            hideSaveButton={!!eventId}
           />
         )}
         {tab === 3 && (
@@ -375,7 +376,7 @@ function InfoTab({
         )}
       </Field>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 32 }}>
-        <button type="button" onClick={onSave} style={btnPrimary}>Save</button>
+        {!eventId && <button type="button" onClick={onSave} style={btnPrimary}>Save</button>}
         <SaveConfirmation trigger={saved} />
       </div>
     </div>
@@ -792,7 +793,7 @@ function EventSetupTab({ maps, setMaps, selectedStaffIds, setSelectedStaffIds, s
       </Section>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 24 }}>
-        <button type="button" onClick={onSave} style={btnPrimary}>Save</button>
+        {!eventId && <button type="button" onClick={onSave} style={btnPrimary}>Save</button>}
         <SaveConfirmation trigger={saved} />
       </div>
     </div>

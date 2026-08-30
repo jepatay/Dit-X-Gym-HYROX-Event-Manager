@@ -1,6 +1,6 @@
 import SaveConfirmation from './SaveConfirmation'
 
-export default function ChecklistPanel({ checklist, setChecklist, config, onSave, saved }) {
+export default function ChecklistPanel({ checklist, setChecklist, config, onSave, saved, hideSaveButton }) {
   const items = config?.checklistItems || []
   const categories = [...new Set(items.map(i => i.category))]
 
@@ -50,7 +50,7 @@ export default function ChecklistPanel({ checklist, setChecklist, config, onSave
       ))}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 8 }}>
-        <button type="button" onClick={onSave} style={btnPrimary}>Save</button>
+        {!hideSaveButton && <button type="button" onClick={onSave} style={btnPrimary}>Save</button>}
         <SaveConfirmation trigger={saved} />
       </div>
     </div>
