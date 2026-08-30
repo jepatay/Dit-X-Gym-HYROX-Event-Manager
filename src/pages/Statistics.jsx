@@ -15,7 +15,8 @@ import { db } from '../firebase'
 import NavBar from '../components/NavBar'
 import { getOrCreateConfig } from '../utils/firestoreUtils'
 import { WEIGHT_OPTIONS, weightColor } from '../utils/weightUtils'
-import { isTestEvent, resolveCategory, teamSize, compositionKey, monthLabel } from '../utils/statsUtils'
+import { isTestEvent, resolveCategory, teamSize, compositionKey, monthLabel, resultsByCategory } from '../utils/statsUtils'
+import { secondsToHHMMSS } from '../utils/timeUtils'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
@@ -134,6 +135,8 @@ export default function Statistics() {
     const entries = Object.entries(buckets).sort((a, b) => b[1] - a[1])
     return { labels: entries.map(e => e[0]), values: entries.map(e => e[1]) }
   }, [enrichedTeams, countMode])
+
+  const resultStats = useMemo(() => resultsByCategory(enrichedTeams), [enrichedTeams])
 
   const perEvent = useMemo(() => {
     const chronological = [...selectedEvents].sort((a, b) => (a.date || '').localeCompare(b.date || ''))
@@ -258,6 +261,56 @@ export default function Statistics() {
               data={perEvent}
               options={stackedBarOptions}
             />
+
+            {resultStats.length === 0 ? (
+              <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '18px 20px', marginBottom: 20 }}>
+                <h3 style={{ fontSize: 16, marginBottom: 4 }}>Results by Category</h3>
+                <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No recorded finish times for the selected events yet.</p>
+              </div>
+            ) : (
+              <>
+                <ChartCard
+                  title="Average Finish Time by Category"
+                  description="Fastest category average first."
+                  type="bar"
+                  data={{
+                    labels: resultStats.map(r => r.label),
+                    datasets: [{ label: 'Average Time', data: resultStats.map(r => r.avgSeconds), backgroundColor: '#e8621a' }],
+                  }}
+                  options={timeBarOptions()}
+                  height={Math.max(280, resultStats.length * 34)}
+                />
+
+                <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '18px 20px', marginBottom: 20 }}>
+                  <h3 style={{ fontSize: 16, marginBottom: 2 }}>Results by Category</h3>
+                  <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 16 }}>Best, average and worst finish time per category, across the selected events.</p>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ textAlign: 'left', color: 'var(--color-text-muted)', fontSize: 11, fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          <th style={{ padding: '8px 10px' }}>Category</th>
+                          <th style={{ padding: '8px 10px' }}>Results</th>
+                          <th style={{ padding: '8px 10px' }}>Best</th>
+                          <th style={{ padding: '8px 10px' }}>Average</th>
+                          <th style={{ padding: '8px 10px' }}>Worst</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {resultStats.map(r => (
+                          <tr key={r.label} style={{ borderTop: '1px solid var(--color-border)' }}>
+                            <td style={{ padding: '8px 10px' }}>{r.label}</td>
+                            <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>{r.count}</td>
+                            <td style={{ padding: '8px 10px', fontFamily: 'var(--font-mono)', color: 'var(--color-success)' }}>{secondsToHHMMSS(r.bestSeconds)}</td>
+                            <td style={{ padding: '8px 10px', fontFamily: 'var(--font-mono)' }}>{secondsToHHMMSS(r.avgSeconds)}</td>
+                            <td style={{ padding: '8px 10px', fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>{secondsToHHMMSS(r.worstSeconds)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
@@ -342,6 +395,29 @@ function barOptions(tooltipLabelFn) {
     scales: {
       x: { ticks: { color: '#7a9abe', font: { size: 10 } }, grid: { color: '#2d406055' } },
       y: { ticks: { color: '#7a9abe' }, grid: { color: '#2d406055' }, beginAtZero: true },
+    },
+  }
+}
+
+function timeBarOptions() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: 'y',
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#243352',
+        titleColor: '#f0f4f8',
+        bodyColor: '#f0f4f8',
+        borderColor: '#2d4060',
+        borderWidth: 1,
+        callbacks: { label: (ctx) => secondsToHHMMSS(ctx.parsed.x) },
+      },
+    },
+    scales: {
+      x: { ticks: { color: '#7a9abe', font: { size: 10 }, callback: (value) => secondsToHHMMSS(value) }, grid: { color: '#2d406055' }, beginAtZero: true },
+      y: { ticks: { color: '#7a9abe' }, grid: { color: '#2d406055' } },
     },
   }
 }

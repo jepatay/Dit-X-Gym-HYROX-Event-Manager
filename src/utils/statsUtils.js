@@ -56,6 +56,27 @@ export function compositionKey({ gender, type }) {
   return gender === 'women' ? 'Double Women' : 'Double Men'
 }
 
+// Finish-time stats (count, best/average/worst) per resolved category label.
+// Only teams with a recorded finishTimeSeconds are counted. Sorted fastest average first.
+export function resultsByCategory(enrichedTeams) {
+  const buckets = {}
+  for (const { team, cat } of enrichedTeams) {
+    if (team.finishTimeSeconds == null) continue
+    const key = cat.label
+    if (!buckets[key]) buckets[key] = { label: key, times: [] }
+    buckets[key].times.push(team.finishTimeSeconds)
+  }
+  return Object.values(buckets)
+    .map(({ label, times }) => ({
+      label,
+      count: times.length,
+      avgSeconds: Math.round(times.reduce((a, s) => a + s, 0) / times.length),
+      bestSeconds: Math.min(...times),
+      worstSeconds: Math.max(...times),
+    }))
+    .sort((a, b) => a.avgSeconds - b.avgSeconds)
+}
+
 export function monthLabel(dateStr) {
   if (!dateStr) return 'Unknown'
   const d = new Date(`${dateStr}T00:00:00`)
