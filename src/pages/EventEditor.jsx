@@ -39,6 +39,7 @@ export default function EventEditor() {
   const [publicSlug, setPublicSlug] = useState('')
   const [publicAdminEnabled, setPublicAdminEnabled] = useState(false)
   const [publicChecklistEnabled, setPublicChecklistEnabled] = useState(false)
+  const [loaded, setLoaded] = useState(isNew)
 
   useEffect(() => {
     getOrCreateConfig().then(setConfig)
@@ -64,6 +65,21 @@ export default function EventEditor() {
     setPublicSlug(d.publicSlug || '')
     setPublicAdminEnabled(d.publicAdminEnabled === true)
     setPublicChecklistEnabled(d.publicChecklistEnabled === true)
+    setLoaded(true)
+  }
+
+  // Auto-save Info/Checklist/Event Setup fields shortly after the last edit, same as
+  // the Teams tab already saves each change immediately — avoids losing typed changes
+  // if the organizer switches tabs or navigates away before pressing Save.
+  useEffect(() => {
+    if (!eventId || !loaded) return
+    const timer = setTimeout(() => { saveEvent() }, 900)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, date, eventType, lanes, links, checklist, maps, selectedStaffIds, stationOverrides])
+
+  function flushSave() {
+    if (eventId && loaded) saveEvent()
   }
 
   function buildData(slug) {
@@ -108,7 +124,7 @@ export default function EventEditor() {
       <NavBar />
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-          <button onClick={() => navigate('/')} style={backBtn}>← Events</button>
+          <button onClick={() => { flushSave(); navigate('/') }} style={backBtn}>← Events</button>
           <h1 style={{ fontSize: 28 }}>{isNew ? 'New Event' : (name || 'Event Editor')}</h1>
           {!isNew && (
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
@@ -132,7 +148,7 @@ export default function EventEditor() {
           {TABS.map((t, i) => (
             <button
               key={t}
-              onClick={() => setTab(i)}
+              onClick={() => { flushSave(); setTab(i) }}
               style={{
                 padding: '10px 20px',
                 background: 'transparent',
