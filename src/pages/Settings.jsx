@@ -293,6 +293,13 @@ function ChecklistTab({ config, onSave, saved }) {
     setItems(prev => prev.filter(i => i.id !== id))
   }
 
+  function renameCategory(oldName, newName) {
+    const trimmed = newName.trim()
+    if (!trimmed || trimmed === oldName) return
+    setItems(prev => prev.map(i => i.category === oldName ? { ...i, category: trimmed } : i))
+    if (newCat === oldName) setNewCat(trimmed)
+  }
+
   function resetToDefaults() {
     if (!confirm('Reset checklist to defaults? Custom items will be lost.')) return
     setItems(DEFAULT_CONFIG.checklistItems)
@@ -306,7 +313,19 @@ function ChecklistTab({ config, onSave, saved }) {
       </div>
       {categories.map(cat => (
         <div key={cat} style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 14, color: 'var(--color-text-muted)', marginBottom: 10 }}>{cat}</h3>
+          <input
+            defaultValue={cat}
+            key={cat}
+            onBlur={e => renameCategory(cat, e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
+            style={{
+              fontSize: 14, color: 'var(--color-text-muted)', marginBottom: 10,
+              background: 'transparent', border: '1px solid transparent', padding: '2px 6px',
+              fontFamily: 'inherit', width: 260,
+            }}
+            onFocus={e => { e.target.style.background = 'var(--color-bg)'; e.target.style.borderColor = 'var(--color-border)' }}
+            title="Click to rename this category"
+          />
           {items.filter(i => i.category === cat).sort((a, b) => a.order - b.order).map(item => (
             <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, padding: '8px 12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
               <span style={{ flex: 1, fontSize: 14 }}>{item.text}</span>

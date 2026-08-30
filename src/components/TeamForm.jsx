@@ -1,12 +1,10 @@
 import { useState, useRef } from 'react'
 import { collection, addDoc, doc, updateDoc, deleteField } from 'firebase/firestore'
 import { db } from '../firebase'
-import { generateRef } from '../utils/bibUtils'
 import { WEIGHT_OPTIONS, weightColor } from '../utils/weightUtils'
 
 export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config, eventType, team, onSaved, onCancel }) {
   const isEditing = !!team
-  const teamRef = isEditing ? team.ref : generateRef(scheduledTime, laneIndex)
 
   const [name, setName] = useState(team?.name || '')
   const [competitionName, setCompetitionName] = useState(team?.competitionName || '')
@@ -50,7 +48,7 @@ export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config
         const newTeamData = {
           eventId,
           scheduledTime,
-          ref: teamRef,
+          laneIndex,
           ...data,
           checkedIn: false,
           checkedInAt: null,
@@ -73,9 +71,8 @@ export default function TeamForm({ eventId, scheduledTime, laneIndex = 0, config
     <div style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', padding: 20, marginBottom: 16 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>
         <div>
-          <Label>Ref</Label>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 500, color: 'var(--color-accent)' }}>{teamRef}</div>
-          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>{scheduledTime}</div>
+          <Label>Time Slot</Label>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 500, color: 'var(--color-accent)' }}>{scheduledTime}</div>
         </div>
         <div>
           <Label>Team / Athlete Name</Label>

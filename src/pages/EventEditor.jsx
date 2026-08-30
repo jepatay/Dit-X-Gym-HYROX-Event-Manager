@@ -12,8 +12,6 @@ import TeamForm from '../components/TeamForm'
 import SaveConfirmation from '../components/SaveConfirmation'
 import { generateSlug } from '../utils/slugUtils'
 import { getOrCreateConfig, buildDefaultStations } from '../utils/firestoreUtils'
-import { generateRef } from '../utils/bibUtils'
-import { BibRef } from '../components/BibRef'
 
 const TABS = ['Info', 'Teams', 'Checklist', 'Event Setup']
 
@@ -33,6 +31,7 @@ export default function EventEditor() {
   const [links, setLinks] = useState([])
   const [waves, setWaves] = useState([])
   const [lanes, setLanes] = useState(4)
+  const [timeSlots, setTimeSlots] = useState([])
   const [checklist, setChecklist] = useState({})
   const [maps, setMaps] = useState({})
   const [selectedStaffIds, setSelectedStaffIds] = useState([])
@@ -57,6 +56,7 @@ export default function EventEditor() {
     setLinks(d.links || [])
     setWaves(d.waves || [])
     setLanes(d.lanes || (d.waves?.[0]?.lanes) || 4)
+    setTimeSlots(d.timeSlots || [])
     setChecklist(d.checklist || {})
     setMaps(d.maps || {})
     setSelectedStaffIds(d.selectedStaffIds || [])
@@ -69,7 +69,7 @@ export default function EventEditor() {
   function buildData(slug) {
     const today = new Date().toISOString().substring(0, 10)
     const status = date < today ? 'past' : date === today ? 'live' : 'future'
-    return { name, date, eventType, status, links, waves, lanes, checklist, maps, selectedStaffIds, stationOverrides, publicSlug: slug, publicAdminEnabled, publicChecklistEnabled }
+    return { name, date, eventType, status, links, waves, lanes, timeSlots, checklist, maps, selectedStaffIds, stationOverrides, publicSlug: slug, publicAdminEnabled, publicChecklistEnabled }
   }
 
   async function saveEvent() {
@@ -170,7 +170,7 @@ export default function EventEditor() {
           />
         )}
         {tab === 1 && (
-          <TeamsTab eventId={eventId} lanes={lanes} config={config} eventType={eventType} />
+          <TeamsTab eventId={eventId} lanes={lanes} config={config} eventType={eventType} timeSlots={timeSlots} setTimeSlots={setTimeSlots} />
         )}
         {tab === 2 && (
           <ChecklistPanel
@@ -313,14 +313,7 @@ function InfoTab({
                 }}
               >Link Access (No Login)</button>
             </div>
-            {publicAdminEnabled && (
-              <>
-                <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
-                  Anyone with this link can check athletes in and record finish times — no login needed. Switch back to "Login Required" any time to cut off access.
-                </p>
-                <LinkCopy path={`/event/${eventId}/admin`} />
-              </>
-            )}
+            {publicAdminEnabled && <LinkCopy path={`/event/${eventId}/admin`} />}
           </div>
         )}
       </Field>
@@ -361,14 +354,7 @@ function InfoTab({
                 }}
               >Link Access (No Login)</button>
             </div>
-            {publicChecklistEnabled && (
-              <>
-                <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
-                  Anyone with this link can view and check off the event checklist — no login needed. Switch back to "Login Required" any time to cut off access.
-                </p>
-                <LinkCopy path={`/event/${eventId}/checklist`} />
-              </>
-            )}
+            {publicChecklistEnabled && <LinkCopy path={`/event/${eventId}/checklist`} />}
           </div>
         )}
       </Field>
@@ -445,7 +431,7 @@ function addMinutes(timeStr, mins) {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
-function TeamsTab({ eventId, lanes, config, eventType }) {
+function TeamsTab({ eventId, lanes, config, eventType, timeSlots, setTimeSlots }) {
   const [teams, setTeams] = useState([])
   const [adding, setAdding] = useState(null) // { time, laneIndex }
   const [editing, setEditing] = useState(null) // teamId
@@ -469,14 +455,27 @@ function TeamsTab({ eventId, lanes, config, eventType }) {
     setTeams(ts => ts.filter(t => t.id !== teamId))
   }
 
+  async function addTimeSlot(time) {
+    if (timeSlots.includes(time)) return
+    const next = [...timeSlots, time].sort()
+    setTimeSlots(next)
+    await updateDoc(doc(db, 'events', eventId), { timeSlots: next })
+  }
+
+  async function removeTimeSlot(time) {
+    const next = timeSlots.filter(t => t !== time)
+    setTimeSlots(next)
+    await updateDoc(doc(db, 'events', eventId), { timeSlots: next })
+  }
+
   async function doMoveTeam(team) {
     const dest = moveTo.trim()
     if (!dest) return
-    const teamsAtDest = teams.filter(t => t.id !== team.id && t.scheduledTime === dest)
-    const laneIndex = teamsAtDest.length
-    const newRef = generateRef(dest, laneIndex)
-    await updateDoc(doc(db, 'teams', team.id), { scheduledTime: dest, ref: newRef })
-    setTeams(ts => ts.map(t => t.id === team.id ? { ...t, scheduledTime: dest, ref: newRef } : t))
+    const usedAtDest = new Set(teams.filter(t => t.id !== team.id && t.scheduledTime === dest).map(t => t.laneIndex).filter(v => v != null))
+    let laneIndex = 0
+    while (usedAtDest.has(laneIndex)) laneIndex++
+    await updateDoc(doc(db, 'teams', team.id), { scheduledTime: dest, laneIndex })
+    setTeams(ts => ts.map(t => t.id === team.id ? { ...t, scheduledTime: dest, laneIndex } : t))
     setMoving(null)
     setMoveTo('')
   }
@@ -489,13 +488,11 @@ function TeamsTab({ eventId, lanes, config, eventType }) {
   }
   const sortedTimes = Object.keys(timeMap).filter(t => t !== '__unknown__').sort()
   const unknownTeams = timeMap['__unknown__'] || []
-  const lastTime = sortedTimes[sortedTimes.length - 1] || null
   const effectiveLanes = lanes || 4
 
-  // Include a newly-added slot that isn't in sortedTimes yet
-  const allTimes = (adding && !sortedTimes.includes(adding.time))
-    ? [...sortedTimes, adding.time].sort()
-    : sortedTimes
+  // A slot can exist with no athletes yet (added as a scheduling break via +5/+10/custom)
+  const allTimes = [...new Set([...sortedTimes, ...(timeSlots || [])])].sort()
+  const lastTime = allTimes[allTimes.length - 1] || null
 
   if (!eventId) return <p style={{ color: 'var(--color-text-muted)', padding: '24px 0' }}>Save the event first before adding teams.</p>
 
@@ -513,16 +510,12 @@ function TeamsTab({ eventId, lanes, config, eventType }) {
       )}
 
       {allTimes.map(time => {
-        const slotTeams = [...(timeMap[time] || [])].sort((a, b) => (a.ref || '').localeCompare(b.ref || '') || (a.bibNumber || 0) - (b.bibNumber || 0))
+        const slotTeams = [...(timeMap[time] || [])].sort((a, b) => (a.laneIndex ?? 0) - (b.laneIndex ?? 0))
         const emptyLanes = Math.max(0, effectiveLanes - slotTeams.length)
         const isAddingHere = adding?.time === time
 
-        // Find which lane indices (0=A, 1=B, …) are already occupied in this slot
-        const usedIndices = new Set(slotTeams.map(t => {
-          const last = (t.ref || '').slice(-1).toUpperCase()
-          const idx = last.charCodeAt(0) - 65
-          return idx >= 0 ? idx : -1
-        }))
+        // Find which lane indices (0, 1, 2, …) are already occupied in this slot
+        const usedIndices = new Set(slotTeams.map(t => t.laneIndex).filter(v => v != null))
         // Build the list of free indices for the empty-lane buttons
         const freeIndices = []
         for (let idx = 0; freeIndices.length < emptyLanes + 4; idx++) {
@@ -532,11 +525,19 @@ function TeamsTab({ eventId, lanes, config, eventType }) {
         return (
           <div key={time}>
             <div style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--color-border)', alignItems: 'stretch', minHeight: 60 }}>
-              <div style={{ width: 54, flexShrink: 0, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--color-text-muted)', paddingTop: 10 }}>{time}</div>
+              <div style={{ width: 54, flexShrink: 0, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--color-text-muted)', paddingTop: 10 }}>
+                {time}
+                {slotTeams.length === 0 && (
+                  <button
+                    onClick={() => removeTimeSlot(time)}
+                    title="Remove empty slot"
+                    style={{ display: 'block', marginTop: 4, background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 11, padding: 0 }}
+                  >✕</button>
+                )}
+              </div>
               {slotTeams.map(team => (
                 <div key={team.id} style={{ flex: 1, background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', padding: '8px 10px', minWidth: 0, position: 'relative' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13 }}><BibRef value={team.ref} bibNumber={team.bibNumber} color="var(--color-accent)" /></span>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', gap: 4 }}>
                     <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
                       <button onClick={() => setEditing(editing === team.id ? null : team.id)} title="Edit team" style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}>✎</button>
                       <button onClick={() => { setMoving(moving === team.id ? null : team.id); setMoveTo(team.scheduledTime || '') }} title="Move to another slot" style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}>⏱</button>
@@ -613,7 +614,6 @@ function TeamsTab({ eventId, lanes, config, eventType }) {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {unknownTeams.map(team => (
               <div key={team.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-bg)', border: '1px solid var(--color-border)', padding: '6px 10px' }}>
-                <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', fontWeight: 700, fontSize: 13 }}>{team.ref || `#${team.bibNumber}`}</span>
                 <span style={{ fontWeight: 600, fontSize: 13 }}>{team.name}</span>
                 <button onClick={() => deleteTeam(team.id)} style={{ background: 'transparent', border: 'none', color: 'var(--color-accent)', cursor: 'pointer', fontSize: 12, padding: 0 }}>✕</button>
               </div>
@@ -636,7 +636,7 @@ function TeamsTab({ eventId, lanes, config, eventType }) {
                 return (
                   <button
                     key={mins}
-                    onClick={() => setAdding({ time: t, laneIndex: 0 })}
+                    onClick={() => addTimeSlot(t)}
                     style={{
                       flex: 1, padding: '14px 10px', background: 'var(--color-surface-raised)',
                       border: '1px solid var(--color-border)', color: 'var(--color-text)',
@@ -652,14 +652,14 @@ function TeamsTab({ eventId, lanes, config, eventType }) {
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>or custom:</span>
               <SlotTimePicker value={newSlotTime} onChange={setNewSlotTime} />
-              <button onClick={() => setAdding({ time: newSlotTime, laneIndex: 0 })} style={btnPrimary}>Add</button>
+              <button onClick={() => addTimeSlot(newSlotTime)} style={btnPrimary}>Add</button>
             </div>
           </div>
         ) : (
           /* First slot: time picker is the focus */
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <SlotTimePicker value={newSlotTime} onChange={setNewSlotTime} />
-            <button onClick={() => setAdding({ time: newSlotTime, laneIndex: 0 })} style={btnPrimary}>Add Slot</button>
+            <button onClick={() => addTimeSlot(newSlotTime)} style={btnPrimary}>Add Slot</button>
           </div>
         )}
       </div>

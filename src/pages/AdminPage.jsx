@@ -5,7 +5,6 @@ import { db } from '../firebase'
 import { useAuth } from '../context/AuthContext'
 import { secondsToHHMMSS, parseTimeInput } from '../utils/timeUtils'
 import { WeightLabel } from '../utils/weightUtils'
-import { BibRef } from '../components/BibRef'
 
 function catLabel(team, config) {
   const cats = config?.categories
@@ -66,6 +65,8 @@ export default function AdminPage() {
   const [timeInputs, setTimeInputs] = useState({})
   const [saving, setSaving] = useState({})
   const [justSaved, setJustSaved] = useState({})
+  const [recentlySaved, setRecentlySaved] = useState({})
+  const [showAllResults, setShowAllResults] = useState(false)
 
   useEffect(() => {
     async function freshLoad() {
@@ -118,7 +119,7 @@ export default function AdminPage() {
   const nowSecs = time.getHours() * 3600 + time.getMinutes() * 60 + time.getSeconds()
 
   const sortedTeams = [...teams].sort((a, b) =>
-    (a.scheduledTime || '').localeCompare(b.scheduledTime || '') || (a.ref || '').localeCompare(b.ref || '')
+    (a.scheduledTime || '').localeCompare(b.scheduledTime || '') || (a.laneIndex ?? 0) - (b.laneIndex ?? 0)
   )
 
   // --- Check-in tab ---
@@ -127,7 +128,6 @@ export default function AdminPage() {
     const s = search.toLowerCase()
     return (
       (t.name || '').toLowerCase().includes(s) ||
-      (t.ref || '').toLowerCase().includes(s) ||
       (t.athlete1?.firstName || '').toLowerCase().includes(s) ||
       (t.athlete1?.lastName || '').toLowerCase().includes(s)
     )
@@ -179,6 +179,12 @@ export default function AdminPage() {
     })
   })()
 
+  // Hide already-finished athletes unless "Show all" is on, or their time was
+  // just recorded (kept visible for a short window so the entry is confirmable).
+  const visibleStartedTeams = showAllResults
+    ? startedTeams
+    : startedTeams.filter(t => t.finishTimeSeconds == null || recentlySaved[t.id])
+
   function adjustTime(team, deltaSecs) {
     const current = team.finishTimeSeconds != null ? team.finishTimeSeconds : 0
     const next = Math.max(0, current + deltaSecs)
@@ -204,6 +210,10 @@ export default function AdminPage() {
       setTeams(ts => ts.map(t => t.id === team.id ? { ...t, finishTimeSeconds: parsed ?? null } : t))
       setJustSaved(s => ({ ...s, [team.id]: true }))
       setTimeout(() => setJustSaved(s => ({ ...s, [team.id]: false })), 2000)
+      if (parsed != null) {
+        setRecentlySaved(s => ({ ...s, [team.id]: true }))
+        setTimeout(() => setRecentlySaved(s => { const next = { ...s }; delete next[team.id]; return next }), 30000)
+      }
     } finally {
       setSaving(s => ({ ...s, [team.id]: false }))
     }
@@ -324,7 +334,6 @@ export default function AdminPage() {
                     opacity: started ? 0.6 : 1,
                     background: team.checkedIn ? 'rgba(34,197,94,0.04)' : 'transparent',
                   }}>
-                    <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 14, flexShrink: 0, minWidth: 52 }}><BibRef value={team.ref} bibNumber={team.bibNumber} color={ACCENT} /></span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{team.name}</div>
                       {catLabel(team, config) && <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{catLabel(team, config)}</div>}
@@ -348,18 +357,28 @@ export default function AdminPage() {
       {/* ── Results Tab ── */}
       {tab === 2 && (
         <div>
-          <SectionHeader>Started athletes — tap to record finish time</SectionHeader>
-          {startedTeams.length === 0 && (
-            <p style={{ padding: '32px 16px', color: MUTED2, textAlign: 'center' }}>No athletes have started yet</p>
+          <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${BORDER}` }}>
+            <input
+              type="checkbox"
+              id="showAllResults"
+              checked={showAllResults}
+              onChange={e => setShowAllResults(e.target.checked)}
+              style={{ width: 16, height: 16, cursor: 'pointer' }}
+            />
+            <label htmlFor="showAllResults" style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: MUTED, cursor: 'pointer' }}>Show all</label>
+          </div>
+          {visibleStartedTeams.length === 0 && (
+            <p style={{ padding: '32px 16px', color: MUTED2, textAlign: 'center' }}>
+              {startedTeams.length === 0 ? 'No athletes have started yet' : 'All started athletes have times recorded'}
+            </p>
           )}
-          {startedTeams.map(team => {
+          {visibleStartedTeams.map(team => {
             const val = getInput(team)
             const isSaving = saving[team.id]
             const hasTime = team.finishTimeSeconds != null
             return (
               <div key={team.id} style={{ borderBottom: `1px solid ${BORDER}`, padding: '12px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
-                  <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 15, flexShrink: 0, minWidth: 56 }}><BibRef value={team.ref} bibNumber={team.bibNumber} color={ACCENT} /></span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 15 }}>{team.name}</div>
                     <div style={{ fontSize: 12, color: MUTED2 }}>
@@ -412,7 +431,6 @@ export default function AdminPage() {
                 <SectionHeader style={{ color: MUTED2 }}>Not yet started ({notStarted.length})</SectionHeader>
                 {notStarted.map(team => (
                   <div key={team.id} style={{ borderBottom: `1px solid ${BORDER}`, padding: '10px 16px', opacity: 0.5, display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 14, flexShrink: 0, minWidth: 56 }}><BibRef value={team.ref} bibNumber={team.bibNumber} color={MUTED} /></span>
                     <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: MUTED2, flexShrink: 0 }}>{team.scheduledTime}</span>
                     <span style={{ fontSize: 14, fontWeight: 600 }}>{team.name}</span>
                     <WeightLabel weight={team.weight} />
@@ -441,7 +459,6 @@ function CheckInRow({ team, checked, config, onToggle }) {
       onClick={onToggle}
       style={{ borderBottom: `1px solid ${BORDER}`, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', background: checked ? 'rgba(34,197,94,0.05)' : 'transparent', userSelect: 'none' }}
     >
-      <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 15, flexShrink: 0, minWidth: 56 }}><BibRef value={team.ref} bibNumber={team.bibNumber} color={ACCENT} /></span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.2 }}>{team.name}</div>
         {catLabel(team, config) && <div style={{ fontSize: 11, color: ACCENT, fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{catLabel(team, config)}</div>}

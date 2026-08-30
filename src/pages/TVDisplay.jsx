@@ -5,7 +5,6 @@ import { QRCodeSVG } from 'qrcode.react'
 import { db } from '../firebase'
 import { secondsToHHMMSS } from '../utils/timeUtils'
 import { WeightLabel } from '../utils/weightUtils'
-import { BibRef } from '../components/BibRef'
 
 const BG      = '#0f1923'
 const SURFACE = '#1e2d45'
@@ -35,6 +34,15 @@ function catLabel(team, config) {
     if (cat) return cat.label
   }
   return (team.competitionName || '').replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').replace(/\s+/g, ' ').trim()
+}
+
+// Absolute finish timestamp (seconds since midnight) = scheduled start + elapsed race time.
+// Sorting on finishTimeSeconds alone sorts by *duration*, not by actual arrival order — that
+// was the bug: a fast athlete who started late could outrank a slow one who arrived earlier.
+function finishTimestamp(team) {
+  if (team.finishTimeSeconds == null || !team.scheduledTime) return null
+  const [h, m] = team.scheduledTime.split(':').map(Number)
+  return h * 3600 + m * 60 + team.finishTimeSeconds
 }
 
 export default function TVDisplay() {
@@ -110,7 +118,7 @@ export default function TVDisplay() {
     : teams
 
   const allSorted = [...validTeams].sort((a, b) =>
-    (a.scheduledTime || '').localeCompare(b.scheduledTime || '') || (a.ref || '').localeCompare(b.ref || '') || (a.bibNumber || 0) - (b.bibNumber || 0)
+    (a.scheduledTime || '').localeCompare(b.scheduledTime || '') || (a.laneIndex ?? 0) - (b.laneIndex ?? 0)
   )
 
   const thirtyMinsAhead = (() => {
@@ -130,7 +138,7 @@ export default function TVDisplay() {
 
   const recentFinishers = [...validTeams]
     .filter(t => t.finishTimeSeconds != null)
-    .sort((a, b) => b.finishTimeSeconds - a.finishTimeSeconds)
+    .sort((a, b) => (finishTimestamp(b) ?? 0) - (finishTimestamp(a) ?? 0))
     .slice(0, 20)
 
   const staff = (config?.staff || []).filter(s => (event.selectedStaffIds || []).includes(s.id))
@@ -165,14 +173,12 @@ export default function TVDisplay() {
             <Empty>No upcoming starts</Empty>
           ) : <>
             <Row header>
-              <Cell w={56} muted>Ref</Cell>
               <Cell w={48} muted>Time</Cell>
               <Cell flex muted>Team</Cell>
               <Cell w={80} muted right>Status</Cell>
             </Row>
             {nextAthletes.map(team => (
               <Row key={team.id}>
-                <Cell w={56} mono bold size={14}><BibRef value={team.ref} bibNumber={team.bibNumber} color={ACCENT} /></Cell>
                 <Cell w={48} muted mono size={12}>{team.scheduledTime}</Cell>
                 <Cell flex>
                   <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{team.name}</div>
@@ -199,13 +205,11 @@ export default function TVDisplay() {
             <Empty>No results yet</Empty>
           ) : <>
             <Row header>
-              <Cell w={56} muted>Ref</Cell>
               <Cell flex muted>Athlete</Cell>
               <Cell w={80} muted right>Time</Cell>
             </Row>
             {recentFinishers.map(team => (
               <Row key={team.id}>
-                <Cell w={56} mono bold size={14}><BibRef value={team.ref} bibNumber={team.bibNumber} color={ACCENT} /></Cell>
                 <Cell flex>
                   <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{team.name}</div>
                   <div style={{ fontSize: 11, color: MUTED2, marginTop: 1 }}>
